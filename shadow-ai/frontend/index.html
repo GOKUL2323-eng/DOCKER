@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHADOW AI | Tier-1 Tactical Intelligence</title>
+
+    <!-- Google Fonts: Orbitron for titles, Rajdhani for tactical data -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS (for layout utilities) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            black: '#050505',
+                            dark: '#0a0a0b',
+                            blue: '#00f3ff',
+                            red: '#ff003c',
+                            gray: '#1e293b',
+                            textPrimary: '#f0f0f5',
+                            textSecondary: '#94a3b8'
+                        }
+                    },
+                    fontFamily: {
+                        orbitron: ['Orbitron', 'sans-serif'],
+                        rajdhani: ['Rajdhani', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+
+    <!-- Markdown & Syntax Highlighting -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/files/index.css?v=3.1">
+</head>
+
+<body class="bg-black text-white font-rajdhani h-screen overflow-hidden">
+    <canvas id="neuralMatrix"></canvas>
+    <div id="app" class="relative z-10 h-full w-full flex flex-col">
+        <!-- Views are injected here -->
+    </div>
+
+    <!-- Application Scripts -->
+    <script src="/files/authLogic.js?v=3.1"></script>
+    <script src="/files/chatLogic.js?v=3.1"></script>
+    <script src="/files/app.js?v=3.1"></script>
+</body>
+
+</html>
