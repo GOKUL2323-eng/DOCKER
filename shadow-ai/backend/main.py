@@ -3,7 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 import os
+import sys
 from contextlib import asynccontextmanager
+
+# Add current directory to path for serverless import resolution
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from services.db import init_db
 from routes import auth, chat

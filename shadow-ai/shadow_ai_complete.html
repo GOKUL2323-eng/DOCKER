@@ -843,7 +843,7 @@ window.state = {
         return map[iso.split('-')[0]] || iso;
     }
 };
-const state = window.state;
+var state = window.state;
 
 // View management logic
 const views = {
@@ -1035,6 +1035,9 @@ const views = {
                                     <button onclick="toggleVoice()" id="voiceToggle" class="text-[9px] uppercase tracking-widest text-cyber-textSecondary hover:text-cyber-blue transition-colors font-black">
                                         VOICE_FEED: <span id="voiceStatus" class="text-cyber-red">${window.state.voiceEnabled ? 'ON' : 'OFF'}</span>
                                     </button>
+                                    <button onclick="toggleCodeWorkspace()" id="workspaceToggle" class="text-[9px] uppercase tracking-widest text-cyber-textSecondary hover:text-cyber-blue transition-colors font-black">
+                                        WORKSPACE: <span id="workspaceStatus" class="text-cyber-red">OFF</span>
+                                    </button>
                                 </div>
                             </div>
 
@@ -1069,6 +1072,52 @@ const views = {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Code Workspace (Right Side Pane) -->
+                <div id="codeWorkspace" class="w-0 border-white/5 bg-[#050505] flex flex-col h-full overflow-hidden transition-all duration-300">
+                    <!-- Workspace Header -->
+                    <div class="p-6 border-b border-white/5 bg-black/40 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-sm font-orbitron font-black text-cyber-blue uppercase tracking-[3px]">Code_Workspace</h3>
+                            <p class="text-[8px] uppercase tracking-[2px] text-cyber-textSecondary opacity-70">Sandbox execution environment</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <select id="codeLangSelect" class="bg-cyber-dark text-cyber-blue border border-white/10 text-[9px] uppercase tracking-widest font-black focus:outline-none cursor-pointer p-1 rounded">
+                                <option value="python">Python</option>
+                                <option value="java">Java</option>
+                                <option value="cpp">C++</option>
+                            </select>
+                            <button onclick="toggleCodeWorkspace()" class="text-cyber-red/50 hover:text-cyber-red p-1">✕</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Editor Pane -->
+                    <div class="flex-1 flex flex-col p-6 min-h-0">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-[9px] text-cyber-textSecondary tracking-wider">WORKSPACE_PAYLOAD:</span>
+                            <button onclick="clearEditor()" class="text-[9px] text-cyber-red/60 hover:text-cyber-red uppercase tracking-wider font-bold">Clear</button>
+                        </div>
+                        <textarea id="workspaceEditor" placeholder="# Write your script here..." 
+                            class="flex-1 w-full bg-[#030303] border border-white/5 rounded-lg p-4 font-mono text-sm text-cyber-blue focus:outline-none focus:border-cyber-blue/30 resize-none custom-scrollbar"></textarea>
+                    </div>
+                    
+                    <!-- Action Controls -->
+                    <div class="px-6 pb-4">
+                        <button onclick="runCode()" id="runCodeBtn" class="w-full flex items-center justify-center gap-2 py-3 bg-cyber-blue text-black font-orbitron font-black text-xs uppercase tracking-widest hover:bg-white hover:shadow-[0_0_20px_rgba(0,243,255,0.4)] transition-all">
+                            <span>Execute Payload</span>
+                            <span class="font-mono">⚡</span>
+                        </button>
+                    </div>
+
+                    <!-- Terminal Pane -->
+                    <div class="h-48 border-t border-white/5 bg-[#010101] flex flex-col p-6 min-h-0">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-[9px] text-cyber-textSecondary tracking-wider">CONSOLE_OUTPUT:</span>
+                            <button onclick="clearTerminal()" class="text-[9px] text-white/30 hover:text-white uppercase tracking-wider font-bold">Reset</button>
+                        </div>
+                        <pre id="workspaceTerminal" class="flex-1 w-full overflow-auto text-xs text-cyber-textSecondary font-mono custom-scrollbar bg-black/60 p-3 border border-white/5 rounded select-text">Ready for execution...</pre>
                     </div>
                 </div>
 
@@ -1773,6 +1822,25 @@ function formatAIResponse(str) {
     if (typeof marked === 'undefined') return str;
     
     const renderer = new marked.Renderer();
+    
+    renderer.code = (code, lang) => {
+        const encodedCode = btoa(unescape(encodeURIComponent(code)));
+        const langClass = lang ? `language-${lang}` : '';
+        const displayLang = lang ? lang.toUpperCase() : 'CODE';
+        
+        return `
+            <div class="code-block-container relative group my-4 border border-white/5 bg-black/40 rounded">
+                <div class="flex justify-between items-center px-4 py-2 border-b border-white/5 bg-black/20 text-[9px] uppercase font-black text-cyber-textSecondary">
+                    <span>${displayLang}</span>
+                    <button onclick="loadCodeIntoWorkspace('${encodedCode}', '${lang || 'python'}')" class="text-cyber-blue hover:text-white transition-colors cursor-pointer select-none">
+                        LOAD_INTO_WORKSPACE
+                    </button>
+                </div>
+                <pre class="${langClass} p-4 overflow-x-auto text-sm"><code class="${langClass}">${code}</code></pre>
+            </div>
+        `;
+    };
+
     renderer.image = (href, title, text) => {
         return `
             <div class="mt-4 tactical-image-container group">
@@ -2064,6 +2132,116 @@ function updateMicUI() {
 function changeModel(val) {
     state.preferredModel = val;
     localStorage.setItem('shadow_preferred_model', val);
+}
+
+function toggleCodeWorkspace() {
+    const ws = document.getElementById('codeWorkspace');
+    const status = document.getElementById('workspaceStatus');
+    if (!ws || !status) return;
+
+    if (ws.classList.contains('w-0')) {
+        ws.classList.remove('w-0');
+        ws.classList.add('w-full', 'lg:w-[500px]', 'border-l');
+        status.innerText = 'ON';
+        status.className = 'text-cyber-blue';
+    } else {
+        ws.classList.add('w-0');
+        ws.classList.remove('w-full', 'lg:w-[500px]', 'border-l');
+        status.innerText = 'OFF';
+        status.className = 'text-cyber-red';
+    }
+}
+
+function clearEditor() {
+    const editor = document.getElementById('workspaceEditor');
+    if (editor) editor.value = '';
+}
+
+function clearTerminal() {
+    const terminal = document.getElementById('workspaceTerminal');
+    if (terminal) terminal.innerText = 'Ready for execution...';
+}
+
+async function runCode() {
+    const editor = document.getElementById('workspaceEditor');
+    const langSelect = document.getElementById('codeLangSelect');
+    const terminal = document.getElementById('workspaceTerminal');
+    const runBtn = document.getElementById('runCodeBtn');
+
+    if (!editor || !langSelect || !terminal || !runBtn) return;
+
+    const code = editor.value;
+    const lang = langSelect.value;
+
+    if (!code.trim()) {
+        terminal.innerText = 'ERROR: No code provided to execute.';
+        return;
+    }
+
+    terminal.innerText = 'Initializing execution sandbox...\nRunning payload...';
+    runBtn.disabled = true;
+    runBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+    try {
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (state.token) {
+            headers['Authorization'] = `Bearer ${state.token}`;
+        }
+
+        const res = await fetch(`${API_BASE}/api/chat/execute`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ code, lang })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            let output = '';
+            if (data.stdout) output += data.stdout;
+            if (data.stderr) output += (output ? '\n' : '') + 'STDERR:\n' + data.stderr;
+            
+            output = output || 'Code executed successfully with no output.';
+            terminal.innerText = `${output}\n\n[Process completed with exit code: ${data.exit_code}]`;
+        } else {
+            terminal.innerText = `SYSTEM_FAILURE: ${data.detail || 'Failed to execute code'}`;
+        }
+    } catch (err) {
+        terminal.innerText = `CONNECTION_ERROR: Failed to reach sandbox executor. ${err.message}`;
+    } finally {
+        runBtn.disabled = false;
+        runBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+}
+
+function loadCodeIntoWorkspace(encodedCode, lang) {
+    const code = decodeURIComponent(escape(atob(encodedCode)));
+    
+    // Ensure workspace is open
+    const ws = document.getElementById('codeWorkspace');
+    if (ws && ws.classList.contains('w-0')) {
+        toggleCodeWorkspace();
+    }
+    
+    // Set code in editor
+    const editor = document.getElementById('workspaceEditor');
+    if (editor) {
+        editor.value = code;
+    }
+    
+    // Set language in dropdown
+    const langSelect = document.getElementById('codeLangSelect');
+    if (langSelect) {
+        const normalizedLang = lang.toLowerCase();
+        if (normalizedLang === 'python' || normalizedLang === 'py') {
+            langSelect.value = 'python';
+        } else if (normalizedLang === 'java') {
+            langSelect.value = 'java';
+        } else if (normalizedLang === 'cpp' || normalizedLang === 'c++' || normalizedLang === 'c') {
+            langSelect.value = 'cpp';
+        }
+    }
 }
 
 

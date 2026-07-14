@@ -10,7 +10,12 @@ if os.path.exists(env_path):
 else:
     load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./shadow_ai.db")
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
+        DATABASE_URL = "sqlite+aiosqlite:////tmp/shadow_ai.db"
+    else:
+        DATABASE_URL = "sqlite+aiosqlite:///./shadow_ai.db"
 
 # Automatically create the parent directory for SQLite databases if it doesn't exist
 if DATABASE_URL.startswith("sqlite"):

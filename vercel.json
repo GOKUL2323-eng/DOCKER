@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "shadow-ai/backend/main.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "shadow-ai/frontend/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/files/(.*)",
+      "dest": "/shadow-ai/frontend/$1"
+    },
+    {
+      "src": "/ui",
+      "dest": "/shadow-ai/frontend/index.html"
+    },
+    {
+      "src": "/",
+      "dest": "/shadow-ai/frontend/index.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/shadow-ai/backend/main.py"
+    }
+  ]
+}

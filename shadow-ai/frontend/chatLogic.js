@@ -371,6 +371,25 @@ function formatAIResponse(str) {
     if (typeof marked === 'undefined') return str;
     
     const renderer = new marked.Renderer();
+    
+    renderer.code = (code, lang) => {
+        const encodedCode = btoa(unescape(encodeURIComponent(code)));
+        const langClass = lang ? `language-${lang}` : '';
+        const displayLang = lang ? lang.toUpperCase() : 'CODE';
+        
+        return `
+            <div class="code-block-container relative group my-4 border border-white/5 bg-black/40 rounded">
+                <div class="flex justify-between items-center px-4 py-2 border-b border-white/5 bg-black/20 text-[9px] uppercase font-black text-cyber-textSecondary">
+                    <span>${displayLang}</span>
+                    <button onclick="loadCodeIntoWorkspace('${encodedCode}', '${lang || 'python'}')" class="text-cyber-blue hover:text-white transition-colors cursor-pointer select-none">
+                        LOAD_INTO_WORKSPACE
+                    </button>
+                </div>
+                <pre class="${langClass} p-4 overflow-x-auto text-sm"><code class="${langClass}">${code}</code></pre>
+            </div>
+        `;
+    };
+
     renderer.image = (href, title, text) => {
         return `
             <div class="mt-4 tactical-image-container group">
@@ -662,6 +681,116 @@ function updateMicUI() {
 function changeModel(val) {
     state.preferredModel = val;
     localStorage.setItem('shadow_preferred_model', val);
+}
+
+function toggleCodeWorkspace() {
+    const ws = document.getElementById('codeWorkspace');
+    const status = document.getElementById('workspaceStatus');
+    if (!ws || !status) return;
+
+    if (ws.classList.contains('w-0')) {
+        ws.classList.remove('w-0');
+        ws.classList.add('w-full', 'lg:w-[500px]', 'border-l');
+        status.innerText = 'ON';
+        status.className = 'text-cyber-blue';
+    } else {
+        ws.classList.add('w-0');
+        ws.classList.remove('w-full', 'lg:w-[500px]', 'border-l');
+        status.innerText = 'OFF';
+        status.className = 'text-cyber-red';
+    }
+}
+
+function clearEditor() {
+    const editor = document.getElementById('workspaceEditor');
+    if (editor) editor.value = '';
+}
+
+function clearTerminal() {
+    const terminal = document.getElementById('workspaceTerminal');
+    if (terminal) terminal.innerText = 'Ready for execution...';
+}
+
+async function runCode() {
+    const editor = document.getElementById('workspaceEditor');
+    const langSelect = document.getElementById('codeLangSelect');
+    const terminal = document.getElementById('workspaceTerminal');
+    const runBtn = document.getElementById('runCodeBtn');
+
+    if (!editor || !langSelect || !terminal || !runBtn) return;
+
+    const code = editor.value;
+    const lang = langSelect.value;
+
+    if (!code.trim()) {
+        terminal.innerText = 'ERROR: No code provided to execute.';
+        return;
+    }
+
+    terminal.innerText = 'Initializing execution sandbox...\nRunning payload...';
+    runBtn.disabled = true;
+    runBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+    try {
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (state.token) {
+            headers['Authorization'] = `Bearer ${state.token}`;
+        }
+
+        const res = await fetch(`${API_BASE}/api/chat/execute`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ code, lang })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            let output = '';
+            if (data.stdout) output += data.stdout;
+            if (data.stderr) output += (output ? '\n' : '') + 'STDERR:\n' + data.stderr;
+            
+            output = output || 'Code executed successfully with no output.';
+            terminal.innerText = `${output}\n\n[Process completed with exit code: ${data.exit_code}]`;
+        } else {
+            terminal.innerText = `SYSTEM_FAILURE: ${data.detail || 'Failed to execute code'}`;
+        }
+    } catch (err) {
+        terminal.innerText = `CONNECTION_ERROR: Failed to reach sandbox executor. ${err.message}`;
+    } finally {
+        runBtn.disabled = false;
+        runBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+}
+
+function loadCodeIntoWorkspace(encodedCode, lang) {
+    const code = decodeURIComponent(escape(atob(encodedCode)));
+    
+    // Ensure workspace is open
+    const ws = document.getElementById('codeWorkspace');
+    if (ws && ws.classList.contains('w-0')) {
+        toggleCodeWorkspace();
+    }
+    
+    // Set code in editor
+    const editor = document.getElementById('workspaceEditor');
+    if (editor) {
+        editor.value = code;
+    }
+    
+    // Set language in dropdown
+    const langSelect = document.getElementById('codeLangSelect');
+    if (langSelect) {
+        const normalizedLang = lang.toLowerCase();
+        if (normalizedLang === 'python' || normalizedLang === 'py') {
+            langSelect.value = 'python';
+        } else if (normalizedLang === 'java') {
+            langSelect.value = 'java';
+        } else if (normalizedLang === 'cpp' || normalizedLang === 'c++' || normalizedLang === 'c') {
+            langSelect.value = 'cpp';
+        }
+    }
 }
 
 

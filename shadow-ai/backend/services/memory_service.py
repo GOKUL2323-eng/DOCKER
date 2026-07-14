@@ -13,7 +13,10 @@ class MemoryService:
     def get_qdrant_client():
         if MemoryService._qdrant_client is None:
             # Persistent storage path for Qdrant local database
-            db_path = os.path.join(os.path.dirname(__file__), "..", "qdrant_db")
+            if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
+                db_path = "/tmp/qdrant_db"
+            else:
+                db_path = os.path.join(os.path.dirname(__file__), "..", "qdrant_db")
             MemoryService._qdrant_client = QdrantClient(path=db_path)
         return MemoryService._qdrant_client
 

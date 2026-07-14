@@ -69,7 +69,7 @@ window.state = {
         return map[iso.split('-')[0]] || iso;
     }
 };
-const state = window.state;
+var state = window.state;
 
 // View management logic
 const views = {
@@ -261,6 +261,9 @@ const views = {
                                     <button onclick="toggleVoice()" id="voiceToggle" class="text-[9px] uppercase tracking-widest text-cyber-textSecondary hover:text-cyber-blue transition-colors font-black">
                                         VOICE_FEED: <span id="voiceStatus" class="text-cyber-red">${window.state.voiceEnabled ? 'ON' : 'OFF'}</span>
                                     </button>
+                                    <button onclick="toggleCodeWorkspace()" id="workspaceToggle" class="text-[9px] uppercase tracking-widest text-cyber-textSecondary hover:text-cyber-blue transition-colors font-black">
+                                        WORKSPACE: <span id="workspaceStatus" class="text-cyber-red">OFF</span>
+                                    </button>
                                 </div>
                             </div>
 
@@ -295,6 +298,52 @@ const views = {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Code Workspace (Right Side Pane) -->
+                <div id="codeWorkspace" class="w-0 border-white/5 bg-[#050505] flex flex-col h-full overflow-hidden transition-all duration-300">
+                    <!-- Workspace Header -->
+                    <div class="p-6 border-b border-white/5 bg-black/40 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-sm font-orbitron font-black text-cyber-blue uppercase tracking-[3px]">Code_Workspace</h3>
+                            <p class="text-[8px] uppercase tracking-[2px] text-cyber-textSecondary opacity-70">Sandbox execution environment</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <select id="codeLangSelect" class="bg-cyber-dark text-cyber-blue border border-white/10 text-[9px] uppercase tracking-widest font-black focus:outline-none cursor-pointer p-1 rounded">
+                                <option value="python">Python</option>
+                                <option value="java">Java</option>
+                                <option value="cpp">C++</option>
+                            </select>
+                            <button onclick="toggleCodeWorkspace()" class="text-cyber-red/50 hover:text-cyber-red p-1">✕</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Editor Pane -->
+                    <div class="flex-1 flex flex-col p-6 min-h-0">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-[9px] text-cyber-textSecondary tracking-wider">WORKSPACE_PAYLOAD:</span>
+                            <button onclick="clearEditor()" class="text-[9px] text-cyber-red/60 hover:text-cyber-red uppercase tracking-wider font-bold">Clear</button>
+                        </div>
+                        <textarea id="workspaceEditor" placeholder="# Write your script here..." 
+                            class="flex-1 w-full bg-[#030303] border border-white/5 rounded-lg p-4 font-mono text-sm text-cyber-blue focus:outline-none focus:border-cyber-blue/30 resize-none custom-scrollbar"></textarea>
+                    </div>
+                    
+                    <!-- Action Controls -->
+                    <div class="px-6 pb-4">
+                        <button onclick="runCode()" id="runCodeBtn" class="w-full flex items-center justify-center gap-2 py-3 bg-cyber-blue text-black font-orbitron font-black text-xs uppercase tracking-widest hover:bg-white hover:shadow-[0_0_20px_rgba(0,243,255,0.4)] transition-all">
+                            <span>Execute Payload</span>
+                            <span class="font-mono">⚡</span>
+                        </button>
+                    </div>
+
+                    <!-- Terminal Pane -->
+                    <div class="h-48 border-t border-white/5 bg-[#010101] flex flex-col p-6 min-h-0">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-[9px] text-cyber-textSecondary tracking-wider">CONSOLE_OUTPUT:</span>
+                            <button onclick="clearTerminal()" class="text-[9px] text-white/30 hover:text-white uppercase tracking-wider font-bold">Reset</button>
+                        </div>
+                        <pre id="workspaceTerminal" class="flex-1 w-full overflow-auto text-xs text-cyber-textSecondary font-mono custom-scrollbar bg-black/60 p-3 border border-white/5 rounded select-text">Ready for execution...</pre>
                     </div>
                 </div>
 

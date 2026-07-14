@@ -9,13 +9,13 @@ from services.translation_service import TranslationService
 from services.memory_service import MemoryService
 
 client = AsyncOpenAI(
-    api_key=settings.OPENAI_API_KEY,
+    api_key=settings.OPENAI_API_KEY or "missing-openai-api-key",
     base_url="https://api.openai.com/v1",
     timeout=60.0 
 )
 
 groq_client = AsyncOpenAI(
-    api_key=settings.GROQ_API_KEY,
+    api_key=settings.GROQ_API_KEY or "missing-groq-api-key",
     base_url="https://api.groq.com/openai/v1",
     timeout=30.0
 )
