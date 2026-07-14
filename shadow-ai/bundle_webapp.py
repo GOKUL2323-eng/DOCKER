@@ -33,7 +33,7 @@ def bundle():
     html = re.sub(r'<link rel="stylesheet" href="/files/index.css\?v=[\d\.]+">', f'<style>\n{css}\n</style>', html)
     
     # 2. Inject JS
-    js_bundle = f"<script>\n{auth_js}\n{chat_js}\n{app_js}\n</script>"
+    js_bundle = f"<script>\n{app_js}\n{auth_js}\n{chat_js}\n</script>"
     
     # Remove existing script tags - Handle versioned paths
     html = re.sub(r'<script src="/files/authLogic.js\?v=[\d\.]+"></script>', '', html)

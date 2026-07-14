@@ -36,18 +36,19 @@ git push origin main
 Fill in the deployment details in the configuration page:
 
 *   **Name**: Choose a unique name for your application (e.g., `shadow-ai-app`).
-*   **Region**: Choose the region closest to you or your target users (e.g., `Oregon (US West)` or `Frankfurt (EU Central)`).
+*   **Region**: Choose the region closest to you or your target users.
 *   **Branch**: Select your default branch (usually `main`).
+*   **Root Directory**: **Leave this blank / empty** (Do NOT type anything here. If you type "Dockerfile" or "backend/Dockerfile" here, Render will fail with an error).
 *   **Runtime**: Select **Docker** (Very Important!).
-*   **Instance Type**: Choose **Free** (or a paid instance if you need more resources/no spin-downs).
+*   **Instance Type**: Choose **Free** (or a paid instance if you want database persistence).
 
 ---
 
 ## Step 4: Configure Advanced Build Settings
-Scroll down to the bottom of the page and click **Advanced** to open more options. Set the following build configuration:
+Scroll down to the bottom of the page and click the **Advanced** button to open the advanced options. Configure the following:
 
 *   **Docker Build Context**: `.` (Keep as dot. This tells Render to run the build from the project root directory).
-*   **Dockerfile Path**: `backend/Dockerfile` (Tells Render where the Dockerfile is located since it's not in the root directory).
+*   **Dockerfile Path**: `backend/Dockerfile` (Tells Render where the Dockerfile is located. Do not confuse this with the Root Directory field above!).
 
 ---
 
@@ -69,14 +70,29 @@ In the **Environment Variables** section of the Render dashboard, add the variab
 
 ---
 
-## Step 6: Configure Persistent Disk (Crucial for SQLite)
-Because SQLite uses local file storage, and Render containers have an ephemeral filesystem (data resets on every deploy or restart), **you must add a persistent volume to keep your database intact.**
+## Step 6: Configure Database Persistence (Or Use Ephemeral Mode)
 
-1. In the **Disks** section (under the Advanced options), click **Add Disk**.
-2. Configure the persistent volume:
+> [!IMPORTANT]
+> **Persistent Disks on Render Free Tier:**
+> Render's **Free Web Service** tier does not support persistent disks. If you chose the **Free** instance type in Step 3, you will not see the **Disks** section in the advanced options.
+
+Depending on your budget and requirements, choose one of the options below:
+
+### Option A: Ephemeral DB (Free Tier - Easy & Simple)
+If you want to keep using the **Free Tier**, you can skip adding a disk:
+1. Leave the **Disks** section empty (as it's not available).
+2. Set your `DATABASE_URL` environment variable in Step 5 to `sqlite+aiosqlite:///./shadow_ai.db`.
+3. *Note:* Your database file will be saved in the ephemeral container storage. Your app will work fully, but **chat history will reset** whenever Render restarts your container (e.g., during a deploy, or after waking up from sleep). This is ideal for testing/demos.
+
+### Option B: Persistent Disk (Paid Tier - Production-Ready)
+If you need persistent history and don't want it to reset, upgrade your instance type:
+1. Change the **Instance Type** from **Free** to **Starter** (or higher) in the service settings.
+2. Scroll to the **Disks** section (now visible under Advanced options) and click **Add Disk**.
+3. Configure the persistent volume:
     *   **Name**: `shadow-db-disk`
-    *   **Mount Path**: `/data` (Must match the directory in `DATABASE_URL` and Dockerfile volume).
-    *   **Size**: `1 GB` (This is the minimum size, which is more than enough for sqlite database storage).
+    *   **Mount Path**: `/data`
+    *   **Size**: `1 GB` (minimum size, plenty for SQLite)
+4. Set your `DATABASE_URL` environment variable to `sqlite+aiosqlite:////data/shadow_ai.db`.
 
 ---
 
