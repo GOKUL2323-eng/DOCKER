@@ -22,5 +22,5 @@ class ChatMessageRequest(BaseModel):
     session_id: Optional[str] = None
     image_data: Optional[str] = None # Base64 encoded image
     message: str
-    response_mode: Optional[str] = "shadow"
+    response_mode: Optional[str] = "direct"
     preferred_model: Optional[str] = "auto"

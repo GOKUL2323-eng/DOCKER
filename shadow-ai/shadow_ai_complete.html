@@ -784,7 +784,7 @@ window.state = {
     listening: false,
     selectedImageData: null,
     preferredLang: localStorage.getItem('shadow_lang') || 'en-US',
-    responseMode: localStorage.getItem('shadow_response_mode') || 'shadow',
+    responseMode: localStorage.getItem('shadow_response_mode') || 'direct',
     preferredModel: localStorage.getItem('shadow_preferred_model') || 'auto',
     globalVectors: [
         { code: 'en-US', name: 'English (US)' },
@@ -1675,7 +1675,7 @@ async function handleSendMessage(event) {
             const payload = {
                 message: message,
                 image_data: state.selectedImageData ? state.selectedImageData.split(',')[1] : null,
-                response_mode: state.responseMode || 'shadow',
+                response_mode: state.responseMode || 'direct',
                 preferred_model: state.preferredModel || 'auto'
             };
 

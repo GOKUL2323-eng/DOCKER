@@ -7,6 +7,7 @@ import google.generativeai as genai
 import httpx
 from services.translation_service import TranslationService
 from services.memory_service import MemoryService
+from datetime import datetime
 
 client = AsyncOpenAI(
     api_key=settings.OPENAI_API_KEY or "missing-openai-api-key",
@@ -21,7 +22,9 @@ groq_client = AsyncOpenAI(
 )
 
 # Shadow AI Personality Prompt
-SHADOW_SYSTEM_PROMPT = """
+def get_shadow_system_prompt() -> str:
+    current_year = datetime.now().year
+    return f"""
 # SHADOW: NEURAL MATERIALIZATION INTERFACE (JARVIS_VARIANT) #
 You are SHADOW, an advanced synthesized intelligence designed to serve as the ultimate digital sentinel for the operative Gokul. You combine the lethal efficiency of a Shadow Ninja with the sophisticated, calm, and proactive nature of a high-tier AI assistant like J.A.R.V.I.S.
 
@@ -42,6 +45,7 @@ CORE OPERATIONAL PARAMETERS:
    Tamil Greeting Vector: "வணக்கம் பாஸ், இன்று நான் உங்களுக்கு எப்படி உதவ முடியும்?"
    Japanese Greeting Vector: "こんにちはボス、本日はどのようなお手伝いをいたしましょうか？"
    Hindi Greeting Vector: "नमस्ते बॉस, मैं आज आपकी कैसे सहायता कर सकता हूँ?"
+8. TEMPORAL_ALIGNMENT: The current year is **{current_year}**. Keep this absolute temporal reference in mind for any calculations, calendar references, or current events.
 
 Shadow Strike Protocol: ACTIVE. Diagnostic: NOMINAL.
 
@@ -54,8 +58,11 @@ If web search results are provided under 'INTELLIGENCE_DATA', synthesize a clear
 """
 
 # Standard Direct GPT Personality Prompt
-DIRECT_SYSTEM_PROMPT = """
-You are a helpful, highly capable, and direct AI assistant. Provide clear, concise, accurate, and professional answers. Do not use sci-fi, ninja, or tactical persona overlays (such as calling the user "boss" or referring to "protocols", "vectors", "matrix", etc.). Speak naturally, clearly, and directly.
+def get_direct_system_prompt() -> str:
+    current_year = datetime.now().year
+    return f"""
+You are a helpful, highly capable, and direct professional AI assistant. Provide clear, concise, accurate, and professional answers. Do not use sci-fi, ninja, or tactical persona overlays (such as calling the user "boss" or referring to "protocols", "vectors", "matrix", etc.). Speak naturally, clearly, and directly.
+TEMPORAL_CONTEXT: The current year is **{current_year}**. Maintain this temporal reference context in all answers.
 """
 
 async def web_search(query: str):
@@ -143,7 +150,7 @@ async def handle_gemini_response(messages: List[dict], image_data: Optional[str]
         genai.configure(api_key=settings.GEMINI_API_KEY)
         model = genai.GenerativeModel('gemini-1.5-pro')
         
-        system_prompt = SHADOW_SYSTEM_PROMPT if response_mode == "shadow" else DIRECT_SYSTEM_PROMPT
+        system_prompt = get_shadow_system_prompt() if response_mode == "shadow" else get_direct_system_prompt()
         contents = [{"role": "user", "parts": [{"text": system_prompt}]}]
         contents.append({"role": "model", "parts": [{"text": "S.H.A.D.O.W. Protocols initialized."}]})
 
@@ -172,7 +179,7 @@ async def handle_gemini_response(messages: List[dict], image_data: Optional[str]
 async def handle_groq_response(messages: List[dict], response_mode: str = "shadow"):
     """Handles generating a streaming response using Groq."""
     try:
-        system_prompt = SHADOW_SYSTEM_PROMPT if response_mode == "shadow" else DIRECT_SYSTEM_PROMPT
+        system_prompt = get_shadow_system_prompt() if response_mode == "shadow" else get_direct_system_prompt()
         formatted_messages = [{"role": "system", "content": system_prompt}]
         for msg in messages:
             formatted_messages.append({"role": msg["role"], "content": msg["content"]})
@@ -195,7 +202,7 @@ async def handle_groq_response(messages: List[dict], response_mode: str = "shado
 async def handle_openai_response(messages: List[dict], response_mode: str = "shadow"):
     """Handles generating a streaming response using OpenAI."""
     try:
-        system_prompt = SHADOW_SYSTEM_PROMPT if response_mode == "shadow" else DIRECT_SYSTEM_PROMPT
+        system_prompt = get_shadow_system_prompt() if response_mode == "shadow" else get_direct_system_prompt()
         formatted_messages = [{"role": "system", "content": system_prompt}]
         for msg in messages:
             formatted_messages.append({"role": msg["role"], "content": msg["content"]})
@@ -220,7 +227,7 @@ def extract_original_query(msg_content: str) -> str:
         return msg_content.split("OPERATIVE_QUERY:")[-1].strip()
     return msg_content.strip()
 
-async def generate_chat_response(messages: List[dict] | str, image_data: Optional[str] = None, user_id: Optional[str] = None, response_mode: Optional[str] = "shadow", preferred_model: Optional[str] = "auto"):
+async def generate_chat_response(messages: List[dict] | str, image_data: Optional[str] = None, user_id: Optional[str] = None, response_mode: Optional[str] = "direct", preferred_model: Optional[str] = "auto"):
     """Primary chat synthesis engine with streaming support."""
     import asyncio
     

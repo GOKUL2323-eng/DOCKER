@@ -10,7 +10,7 @@ window.state = {
     listening: false,
     selectedImageData: null,
     preferredLang: localStorage.getItem('shadow_lang') || 'en-US',
-    responseMode: localStorage.getItem('shadow_response_mode') || 'shadow',
+    responseMode: localStorage.getItem('shadow_response_mode') || 'direct',
     preferredModel: localStorage.getItem('shadow_preferred_model') || 'auto',
     globalVectors: [
         { code: 'en-US', name: 'English (US)' },

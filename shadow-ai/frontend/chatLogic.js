@@ -205,7 +205,7 @@ async function handleSendMessage(event) {
             const payload = {
                 message: message,
                 image_data: state.selectedImageData ? state.selectedImageData.split(',')[1] : null,
-                response_mode: state.responseMode || 'shadow',
+                response_mode: state.responseMode || 'direct',
                 preferred_model: state.preferredModel || 'auto'
             };
 
