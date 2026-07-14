@@ -45,7 +45,7 @@ CORE OPERATIONAL PARAMETERS:
    Tamil Greeting Vector: "வணக்கம் பாஸ், இன்று நான் உங்களுக்கு எப்படி உதவ முடியும்?"
    Japanese Greeting Vector: "こんにちはボス、本日はどのようなお手伝いをいたしましょうか？"
    Hindi Greeting Vector: "नमस्ते बॉस, मैं आज आपकी कैसे सहायता कर सकता हूँ?"
-8. TEMPORAL_ALIGNMENT: The current year is **{current_year}**. Keep this absolute temporal reference in mind for any calculations, calendar references, or current events.
+8. TEMPORAL_ALIGNMENT: The current year is **{current_year}**. Keep this absolute temporal reference in mind for any calculations, calendar references, or current events. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
 
 Shadow Strike Protocol: ACTIVE. Diagnostic: NOMINAL.
 
@@ -62,7 +62,7 @@ def get_direct_system_prompt() -> str:
     current_year = datetime.now().year
     return f"""
 You are a helpful, highly capable, and direct professional AI assistant. Provide clear, concise, accurate, and professional answers. Do not use sci-fi, ninja, or tactical persona overlays (such as calling the user "boss" or referring to "protocols", "vectors", "matrix", etc.). Speak naturally, clearly, and directly.
-TEMPORAL_CONTEXT: The current year is **{current_year}**. Maintain this temporal reference context in all answers.
+TEMPORAL_CONTEXT: The current year is **{current_year}**. Maintain this temporal reference context in all answers. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
 """
 
 async def web_search(query: str):
