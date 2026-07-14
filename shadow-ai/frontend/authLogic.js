@@ -106,3 +106,17 @@ function logout() {
     localStorage.removeItem('shadow_user');
     navigate('chat');
 }
+
+function togglePasswordVisibility() {
+    const passwordInput = document.getElementById('password');
+    const toggleBtn = document.getElementById('passwordToggleBtn');
+    if (!passwordInput || !toggleBtn) return;
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleBtn.innerText = 'Hide';
+    } else {
+        passwordInput.type = 'password';
+        toggleBtn.innerText = 'Show';
+    }
+}

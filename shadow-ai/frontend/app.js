@@ -107,9 +107,14 @@ const views = {
 
                         <div class="space-y-2">
                             <label class="block text-[10px] uppercase tracking-[2px] text-cyber-textSecondary">Access Key</label>
-                            <input type="password" id="password" required 
-                                class="w-full px-4 py-3 cyber-input text-sm" 
-                                placeholder="••••••••">
+                            <div class="relative">
+                                <input type="password" id="password" required 
+                                    class="w-full px-4 py-3 cyber-input text-sm pr-12" 
+                                    placeholder="••••••••">
+                                <button type="button" id="passwordToggleBtn" onclick="togglePasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-cyber-textSecondary hover:text-cyber-blue text-[10px] uppercase font-bold tracking-widest focus:outline-none">
+                                    Show
+                                </button>
+                            </div>
                         </div>
 
                         <button type="submit" id="authBtn" class="w-full cyber-btn h-14 mt-4">
