@@ -690,12 +690,12 @@ function toggleCodeWorkspace() {
 
     if (ws.classList.contains('w-0')) {
         ws.classList.remove('w-0');
-        ws.classList.add('w-full', 'lg:w-[500px]', 'border-l');
+        ws.classList.add('w-full', 'absolute', 'inset-0', 'z-40', 'lg:relative', 'lg:w-[500px]', 'lg:border-l', 'lg:z-auto');
         status.innerText = 'ON';
         status.className = 'text-cyber-blue';
     } else {
         ws.classList.add('w-0');
-        ws.classList.remove('w-full', 'lg:w-[500px]', 'border-l');
+        ws.classList.remove('w-full', 'absolute', 'inset-0', 'z-40', 'lg:relative', 'lg:w-[500px]', 'lg:border-l', 'lg:z-auto');
         status.innerText = 'OFF';
         status.className = 'text-cyber-red';
     }
