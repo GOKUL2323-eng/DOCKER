@@ -217,7 +217,7 @@ const views = {
                     </div>
 
                     <!-- Data Stream -->
-                    <div id="chatWindow" class="flex-1 overflow-y-auto p-4 md:p-10 space-y-8 custom-scrollbar pb-44 bg-transparent">
+                    <div id="chatWindow" class="flex-1 overflow-y-auto p-4 md:p-10 space-y-8 custom-scrollbar pb-36 md:pb-44 bg-transparent">
                         <div class="flex gap-4 w-full md:w-3/4 animate-float">
                             <div class="w-10 h-10 rounded-full border border-cyber-red/20 bg-black flex-shrink-0 flex items-center justify-center overflow-hidden avatar-small">
                                 <img src="/files/assets/shadow_ninja_red.png" class="w-7 h-7 object-contain opacity-50" />
@@ -233,10 +233,10 @@ const views = {
                     </div>
 
                     <!-- Control Console -->
-                    <div class="absolute bottom-0 left-0 w-full p-4 md:p-10 bg-gradient-to-t from-cyber-black via-cyber-black/90 to-transparent z-30">
+                    <div class="absolute bottom-0 left-0 w-full p-3 md:p-10 pb-5 md:pb-10 bg-gradient-to-t from-cyber-black via-cyber-black/90 to-transparent z-30">
                         <div class="max-w-5xl mx-auto">
                             <!-- Status Bar -->
-                            <div class="flex flex-wrap gap-4 justify-between items-center mb-4 px-2 bg-black/60 p-2 border border-white/5 rounded backdrop-blur-md">
+                            <div class="flex flex-wrap gap-2 md:gap-4 justify-between items-center mb-3 md:mb-4 px-2 bg-black/60 p-1.5 md:p-2 border border-white/5 rounded backdrop-blur-md">
                                 <div class="flex gap-4">
                                     <div class="text-[9px] text-cyber-textSecondary flex items-center gap-2 tracking-widest">
                                         <span class="w-1.5 h-1.5 bg-cyber-red rounded-full animate-pulse"></span>
