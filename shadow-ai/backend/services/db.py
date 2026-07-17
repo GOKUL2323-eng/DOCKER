@@ -54,15 +54,11 @@ if DATABASE_URL.startswith("postgresql"):
         else:
             DATABASE_URL += "?prepared_statement_cache_size=0"
 
-engine_kwargs = {"echo": True}
+engine_kwargs = {"echo": False}
 if DATABASE_URL.startswith("postgresql"):
-    import ssl
-    ssl_context = ssl.create_default_context()
-    ssl_context.check_hostname = False
-    ssl_context.verify_mode = ssl.CERT_NONE
     engine_kwargs["connect_args"] = {
-        "ssl": ssl_context,
-        "statement_cache_size": 0
+        "ssl": "require",
+        "statement_cache_size": 0,  # Required for Supabase PgBouncer Transaction Pooler
     }
 
 engine = create_async_engine(DATABASE_URL, **engine_kwargs)
