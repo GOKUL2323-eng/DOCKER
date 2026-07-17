@@ -261,14 +261,11 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
     gemini_key = getattr(settings, "GEMINI_API_KEY", None) and settings.GEMINI_API_KEY.strip() != ""
     openai_key = getattr(settings, "OPENAI_API_KEY", None) and settings.OPENAI_API_KEY.strip() != ""
     
-    if is_search_request and (gemini_key or openai_key):
+    # Always perform a web search scan for real-time access on every question, except for basic greetings
+    is_simple_greeting = last_msg_lower.strip() in ["hi", "hello", "hey", "hola", "வணக்கம்", "こんにちは", "नमस्ते"] or len(last_msg_lower.strip()) < 3
+    
+    if (gemini_key or openai_key) and not is_simple_greeting:
         search_query = last_msg_content
-        generic_words = ["this subject", "this topic", "this", "on this", "matrix scan", "web scan", "scan this"]
-        is_generic_query = any(word in last_msg_lower for word in generic_words) or last_msg_lower.strip() in ["scan", "web_scan", "web-scan", "search"]
-        
-        if is_generic_query and len(messages) >= 3:
-            search_query = extract_original_query(messages[-3]["content"])
-            
         search_results = await web_search(search_query)
         messages[-1]["content"] = f"INTELLIGENCE_DATA:\n{search_results}\n\nOPERATIVE_QUERY: {last_msg_content}"
 
