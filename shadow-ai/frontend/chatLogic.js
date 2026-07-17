@@ -395,8 +395,6 @@ async function handleSendMessage(event) {
         if (responseFlow.status === 401) { logout(); return; }
         if (!responseFlow.ok) throw new Error("UPLINK_FAILURE");
 
-        removeTypingIndicator();
-        
         // Process SSE Stream
         const reader = responseFlow.body.getReader();
         const decoder = new TextDecoder();
