@@ -48,6 +48,21 @@ async def text_to_speech(request: TTSRequest):
 from fastapi.responses import StreamingResponse
 import asyncio
 
+@router.get("/debug-env")
+async def debug_env():
+    import os
+    from pathlib import Path
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    exists = env_path.exists()
+    openai_key = os.getenv("OPENAI_API_KEY", "")
+    return {
+        "env_exists": exists,
+        "env_size": env_path.stat().st_size if exists else 0,
+        "env_path": str(env_path),
+        "openai_key_preview": openai_key[:10] if openai_key else "None",
+        "vercel_env": os.getenv("VERCEL_ENV", "None"),
+    }
+
 @router.post("/message")
 async def send_message(
     request: ChatMessageRequest, 
