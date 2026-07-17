@@ -1,31 +1,51 @@
-// Shadow v2.0 Tactical Chat Logic
+// ChatGPT Premium Interface Tactical Chat Logic
 
 function startNewSession() {
     state.currentSessionId = null;
     state.selectedImageData = null; 
+    state.selectedFileText = null;
+    clearImage();
+    
     const chatWindow = document.getElementById('chatWindow');
     if (chatWindow) {
         chatWindow.innerHTML = `
-            <div class="flex gap-4 w-full md:w-3/4 animate-float">
-                <div class="w-10 h-10 rounded-full border border-cyber-red/30 bg-black flex-shrink-0 flex items-center justify-center overflow-hidden avatar-small">
-                    <img src="/files/assets/shadow_ninja_red.png" class="w-7 h-7 object-contain opacity-50" />
+            <div class="welcome-container animate-float">
+                <div class="welcome-logo">
+                    <img src="/files/assets/shadow_ninja_red.png" alt="Shadow Logo">
                 </div>
-                <div class="cyber-panel p-5 flex-1">
-                    <div class="flex justify-between items-center mb-2">
-                        <p class="text-cyber-red font-orbitron text-[9px] uppercase tracking-[3px] font-black">System_Broadcast</p>
-                        <span class="text-[8px] text-white/20 font-mono">NODE_01</span>
+                <h2 class="welcome-title">What can I help with today, boss?</h2>
+                <div class="suggestions-grid">
+                    <div class="suggestion-card" onclick="quickAction('Help me write a Python script to scan directories for specific patterns.')">
+                        <div class="suggestion-title">Code a search utility</div>
+                        <div class="suggestion-desc">Write a python scan function</div>
+                        <span class="suggestion-arrow">→</span>
                     </div>
-                    <div class="text-sm text-cyber-textPrimary/80 leading-relaxed font-bold">New operational thread initialized. State your objective, operative.</div>
+                    <div class="suggestion-card" onclick="quickAction('Draft a professional email asking for feedback on our tactical chat application.')">
+                        <div class="suggestion-title">Draft feedback email</div>
+                        <div class="suggestion-desc">Formal request for operative feedback</div>
+                        <span class="suggestion-arrow">→</span>
+                    </div>
+                    <div class="suggestion-card" onclick="quickAction('Explain quantum computing and neural embeddings in simple terms.')">
+                        <div class="suggestion-title">Explain embeddings</div>
+                        <div class="suggestion-desc">Explain high-dimensional vectors</div>
+                        <span class="suggestion-arrow">→</span>
+                    </div>
+                    <div class="suggestion-card" onclick="quickAction('Design a tactical workout plan for physical and cognitive endurance.')">
+                        <div class="suggestion-title">Design workout plan</div>
+                        <div class="suggestion-desc">For maximum operational stamina</div>
+                        <span class="suggestion-arrow">→</span>
+                    </div>
                 </div>
             </div>
         `;
     }
-    clearImage();
     
+    // De-highlight active list session items
+    const activeItems = document.querySelectorAll('.session-item');
+    activeItems.forEach(item => item.classList.remove('active'));
+
     // Auto-close sidebar on mobile after selecting new session
-    if (window.innerWidth < 1024) {
-        toggleSidebar(false);
-    }
+    toggleSidebarMobile(false);
 }
 
 async function fetchSessions() {
@@ -39,23 +59,31 @@ async function fetchSessions() {
         if (!res.ok) throw new Error("FETCH_FAILED");
 
         const sessions = await res.json();
-        sessionList.innerHTML = sessions.map(s => `
-            <div id="session-item-${s.id}" class="group p-4 border border-white/5 bg-white/5 hover:bg-cyber-blue/5 hover:border-cyber-blue/20 transition-all relative overflow-hidden flex justify-between items-center">
-                <div class="absolute left-0 top-0 w-0.5 h-full bg-cyber-blue opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div onclick="selectSession('${s.id}')" class="flex-1 cursor-pointer min-w-0 pr-2">
-                    <div class="text-[10px] text-cyber-blue/50 font-black uppercase tracking-widest mb-1">${new Date(s.updated_at).toLocaleDateString()}</div>
-                    <div class="text-xs font-bold text-cyber-textPrimary truncate" id="session-text-${s.id}">${s.title || 'NULL_SUBJECT'}</div>
+        
+        if (sessions.length === 0) {
+            sessionList.innerHTML = `<div class="text-[10px] text-center text-cyber-textSecondary p-4 uppercase tracking-widest opacity-60">No operational logs</div>`;
+            return;
+        }
+
+        sessionList.innerHTML = sessions.map(s => {
+            const isActive = state.currentSessionId === s.id ? 'active' : '';
+            return `
+            <div id="session-item-${s.id}" class="session-item ${isActive}">
+                <div class="session-title-container" onclick="selectSession('${s.id}')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    <span class="session-text" id="session-text-${s.id}">${s.title || 'NULL_SUBJECT'}</span>
                 </div>
-                <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" id="session-actions-${s.id}">
-                    <button onclick="startRenameSession('${s.id}', event)" class="p-1 text-cyber-textSecondary hover:text-cyber-blue transition-colors" title="Rename log">
+                <div class="session-actions" id="session-actions-${s.id}">
+                    <button onclick="startRenameSession('${s.id}', event)" class="session-action-btn" title="Rename log">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                     </button>
-                    <button onclick="deleteSession('${s.id}', event)" class="p-1 text-cyber-red/80 hover:text-cyber-red transition-colors" title="Delete log">
+                    <button onclick="deleteSession('${s.id}', event)" class="session-action-btn text-cyber-red/80 hover:text-cyber-red" title="Delete log">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                     </button>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     } catch (err) {
         sessionList.innerHTML = `<div class="text-[9px] text-cyber-red/50 uppercase font-black text-center p-4">Uplink_Error: ${err.message}</div>`;
     }
@@ -69,7 +97,8 @@ function startRenameSession(id, event) {
 
     const currentTitle = textSpan.innerText;
     
-    textSpan.outerHTML = `<input type="text" class="bg-black/50 border border-cyber-blue/30 text-xs font-bold text-cyber-textPrimary px-1 rounded focus:outline-none focus:border-cyber-blue w-full" id="session-input-${id}" value="${currentTitle}" onkeydown="handleRenameKeydown('${id}', event)" onblur="saveRenameSession('${id}')" />`;
+    // Replace text element with inline input
+    textSpan.outerHTML = `<input type="text" class="session-rename-input" id="session-input-${id}" value="${currentTitle}" onkeydown="handleRenameKeydown('${id}', event)" onblur="saveRenameSession('${id}')" />`;
     actionsDiv.style.setProperty('display', 'none', 'important');
 
     const inputEl = document.getElementById(`session-input-${id}`);
@@ -97,6 +126,17 @@ async function saveRenameSession(id) {
         return;
     }
 
+    // Optimistic UI rename
+    const parent = inputEl.parentElement;
+    parent.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        <span class="session-text" id="session-text-${id}">${newTitle}</span>
+    `;
+    
+    const itemEl = document.getElementById(`session-item-${id}`);
+    const actionsDiv = itemEl ? itemEl.querySelector('.session-actions') : null;
+    if (actionsDiv) actionsDiv.style.removeProperty('display');
+
     try {
         const res = await fetch(`${API_BASE}/api/chat/sessions/${id}`, {
             method: 'PATCH',
@@ -110,12 +150,12 @@ async function saveRenameSession(id) {
         fetchSessions();
     } catch (err) {
         console.error("Rename session log failed:", err);
-        fetchSessions();
+        fetchSessions(); // Rollback
     }
 }
 
 function cancelRenameSession(id) {
-    fetchSessions();
+    fetchSessions(); // Reload sessions lists to rollback input elements
 }
 
 async function deleteSession(id, event) {
@@ -123,6 +163,7 @@ async function deleteSession(id, event) {
     
     if (!confirm("Are you sure you want to terminate this operational thread log?")) return;
 
+    // Optimistic delete
     const item = document.getElementById(`session-item-${id}`);
     if (item) item.remove();
 
@@ -140,31 +181,13 @@ async function deleteSession(id, event) {
         fetchSessions();
     } catch (err) {
         console.error("Delete session failure:", err);
-        fetchSessions();
+        fetchSessions(); // Rollback
     }
 }
 
 function selectSession(id) {
     loadSession(id);
-    if (window.innerWidth < 1024) {
-        toggleSidebar(false);
-    }
-}
-
-function toggleSidebar(force = null) {
-    const sidebar = document.getElementById('sidebar');
-    const backdrop = document.getElementById('sidebarBackdrop');
-    if (!sidebar) return;
-
-    const isActive = force !== null ? force : !sidebar.classList.contains('sidebar-active');
-    
-    if (isActive) {
-        sidebar.classList.add('sidebar-active');
-        if (backdrop) backdrop.classList.remove('hidden');
-    } else {
-        sidebar.classList.remove('sidebar-active');
-        if (backdrop) backdrop.classList.add('hidden');
-    }
+    toggleSidebarMobile(false);
 }
 
 async function loadSession(sessionId) {
@@ -174,10 +197,16 @@ async function loadSession(sessionId) {
 
     chatWindow.innerHTML = `
         <div class="flex flex-col items-center justify-center py-20 gap-4">
-            <div class="w-12 h-12 border-2 border-cyber-red/20 border-t-cyber-red rounded-full animate-spin"></div>
-            <div class="text-[10px] text-cyber-red font-black uppercase tracking-[4px] animate-pulse">Accessing_Neural_Archives...</div>
+            <div class="w-10 h-10 border-2 border-accent-color border-t-transparent rounded-full animate-spin"></div>
+            <div class="text-xs text-cyber-textSecondary font-semibold uppercase tracking-[3px] animate-pulse">Syncing Neural Archives...</div>
         </div>
     `;
+
+    // Active visual highlight
+    const items = document.querySelectorAll('.session-item');
+    items.forEach(el => el.classList.remove('active'));
+    const activeItem = document.getElementById(`session-item-${sessionId}`);
+    if (activeItem) activeItem.classList.add('active');
 
     try {
         const res = await fetch(`${API_BASE}/api/chat/sessions/${sessionId}`, {
@@ -187,8 +216,13 @@ async function loadSession(sessionId) {
 
         const data = await res.json();
         chatWindow.innerHTML = '';
-        data.messages.forEach(msg => appendMessage(msg.role, msg.content));
-        scrollToBottom();
+        
+        if (data.messages.length === 0) {
+            startNewSession();
+        } else {
+            data.messages.forEach(msg => appendMessage(msg.role, msg.content));
+            scrollToBottom();
+        }
     } catch (err) {
         chatWindow.innerHTML = `<div class="cyber-panel p-6 border-cyber-red text-cyber-red text-xs font-black uppercase tracking-widest text-center">ARCHIVE_CORRUPTED: ${err.message}</div>`;
     }
@@ -198,7 +232,9 @@ function appendMessage(role, content, isStreaming = false) {
     const chatWindow = document.getElementById('chatWindow');
     if (!chatWindow) return;
 
-    // Use existing streaming bubble if it belongs to the assistant and we are streaming
+    const isUser = role === 'user';
+    
+    // Check if streaming is active to append directly to assistant bubble
     if (isStreaming && role === 'assistant') {
         const lastMsg = chatWindow.lastElementChild;
         if (lastMsg && lastMsg.dataset.role === 'assistant' && lastMsg.dataset.streaming === 'true') {
@@ -211,56 +247,83 @@ function appendMessage(role, content, isStreaming = false) {
         }
     }
 
-    const div = document.createElement('div');
-    const isUser = role === 'user';
-    div.className = `flex gap-4 w-full ${isUser ? 'flex-row-reverse md:pl-20' : 'md:pr-20'} animate-float group`;
-    div.dataset.role = role;
+    // Typing indicator check
+    removeTypingIndicator();
+
+    const outerDiv = document.createElement('div');
+    outerDiv.className = 'message-outer-container';
+    outerDiv.dataset.role = role;
     if (isStreaming) {
-        div.dataset.streaming = 'true';
-        div.dataset.rawContent = content;
+        outerDiv.dataset.streaming = 'true';
+        outerDiv.dataset.rawContent = content;
     }
 
     const panelClass = isUser ? 'cyber-panel-red' : 'cyber-panel';
-    const accentColor = isUser ? 'text-cyber-blue' : 'text-cyber-red';
-    const label = isUser ? 'OPERATIVE' : 'SHADOW_AI';
+    const senderLabel = isUser ? 'OPERATIVE' : 'SHADOW_AI';
+    const avatarClass = isUser ? 'message-avatar-user' : 'message-avatar-ai';
+    const avatarContent = isUser ? 'OP' : `<img src="/files/assets/shadow_ninja_red.png" class="w-full h-full object-cover p-0.5 opacity-90" />`;
 
-    div.innerHTML = `
-        <div class="w-10 h-10 rounded-full border border-cyber-red/30 bg-black flex-shrink-0 flex items-center justify-center font-orbitron font-black text-[10px] ${accentColor} overflow-hidden avatar-small">
-            ${isUser ? 'OP' : `<img src="/files/assets/shadow_ninja_red.png" class="w-full h-full object-cover p-1 opacity-80" />`}
-        </div>
-        <div class="${panelClass} p-5 flex-1 relative min-w-0">
-            <div class="flex justify-between items-center mb-3 border-b border-white/5 pb-2">
-                <p class="${accentColor} font-orbitron text-[9px] uppercase tracking-[3px] font-black">${label}</p>
-                <span class="text-[8px] text-white/10 font-mono uppercase">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}</span>
-            </div>
-            <div class="text-sm text-cyber-textPrimary leading-relaxed prose prose-invert max-w-none message-content">
-                ${state.selectedImageData && isUser ? `<img src="data:image/jpeg;base64,${state.selectedImageData}" class="max-w-sm mb-4 rounded border border-cyber-red/30 shadow-2xl" />` : ''}
-                ${formatAIResponse(content)}
+    outerDiv.innerHTML = `
+        <div class="${panelClass}">
+            <div class="message-wrapper">
+                <div class="message-avatar ${avatarClass}">
+                    ${avatarContent}
+                </div>
+                <div class="message-content-container">
+                    <div class="message-header">
+                        <span class="message-sender">${senderLabel}</span>
+                        <span class="message-timestamp">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}</span>
+                    </div>
+                    <div class="message-content">
+                        ${state.selectedImageData && isUser ? `<img src="data:image/jpeg;base64,${state.selectedImageData}" class="max-w-sm mb-4 rounded border border-cyber-red/30 shadow-2xl" />` : ''}
+                        ${formatAIResponse(content)}
+                    </div>
+                </div>
             </div>
         </div>
     `;
 
-    chatWindow.appendChild(div);
-    return div;
+    chatWindow.appendChild(outerDiv);
+    return outerDiv;
 }
 
 function appendTypingIndicator() {
     const chatWindow = document.getElementById('chatWindow');
-    const div = document.createElement('div');
-    div.id = 'typingIndicator';
-    div.className = "flex gap-4 w-full md:w-1/2 animate-float";
-    div.innerHTML = `
-        <div class="w-10 h-10 rounded-full border border-cyber-red/30 bg-black flex-shrink-0 flex items-center justify-center overflow-hidden avatar-small">
-            <img src="/files/assets/shadow_ninja_red.png" class="w-7 h-7 object-contain opacity-30" />
-        </div>
-        <div class="cyber-panel p-5 flex-1 flex gap-2 items-center h-14">
-            <div class="w-2 h-2 rounded-full bg-cyber-red/40 typing-dot"></div>
-            <div class="w-2 h-2 rounded-full bg-cyber-red/60 typing-dot"></div>
-            <div class="w-2 h-2 rounded-full bg-cyber-red typing-dot"></div>
-            <span class="ml-4 text-[9px] text-cyber-red/40 font-black uppercase tracking-[3px]">Analyzing_Matrix...</span>
+    if (!chatWindow) return;
+    
+    removeTypingIndicator();
+
+    const outerDiv = document.createElement('div');
+    outerDiv.id = 'typingIndicator';
+    outerDiv.className = 'message-outer-container';
+    
+    const panelClass = 'cyber-panel';
+    const avatarClass = 'message-avatar-ai';
+    const avatarContent = `<img src="/files/assets/shadow_ninja_red.png" class="w-full h-full object-cover p-0.5 opacity-40" />`;
+
+    outerDiv.innerHTML = `
+        <div class="${panelClass}">
+            <div class="message-wrapper">
+                <div class="message-avatar ${avatarClass}">
+                    ${avatarContent}
+                </div>
+                <div class="message-content-container">
+                    <div class="message-header">
+                        <span class="message-sender">SHADOW_AI</span>
+                        <span class="message-timestamp">PROBING MATRIX...</span>
+                    </div>
+                    <div class="message-content">
+                        <div class="typing-bubble">
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     `;
-    chatWindow.appendChild(div);
+    chatWindow.appendChild(outerDiv);
     scrollToBottom();
 }
 
@@ -290,25 +353,22 @@ async function handleSendMessage(event) {
     scrollToBottom();
     appendTypingIndicator();
 
-        // Visual feedback
-        const avatar = document.getElementById('chatAvatar');
-        if (avatar) avatar.classList.add('speaking-glow');
+    // Trigger visual avatar pulses if speaking
+    const avatar = document.querySelector('.message-avatar-ai');
+    if (avatar) avatar.classList.add('speaking-glow');
 
-        try {
-            const payload = {
-                message: message,
-                image_data: state.selectedImageData ? state.selectedImageData.split(',')[1] : null,
-                response_mode: state.responseMode || 'direct',
-                preferred_model: state.preferredModel || 'auto'
-            };
+    try {
+        const payload = {
+            message: message,
+            image_data: state.selectedImageData ? state.selectedImageData.split(',')[1] : null,
+            response_mode: state.responseMode || 'direct',
+            preferred_model: state.preferredModel || 'auto'
+        };
 
-            if (state.selectedFileText) {
-                payload.message = `[ATTACHED_FILE: ${state.selectedFileText.name}]\n\`\`\`\n${state.selectedFileText.content}\n\`\`\`\n\n${payload.message}`;
-            }
+        if (state.selectedFileText) {
+            payload.message = `[ATTACHED_FILE: ${state.selectedFileText.name}]\n\`\`\`\n${state.selectedFileText.content}\n\`\`\`\n\n${payload.message}`;
+        }
 
-            // session_id is handled in the URL query param for send_message endpoint
-
-        const tempImgData = state.selectedImageData;
         state.selectedImageData = null;
         state.selectedFileText = null;
         clearImage();
@@ -350,6 +410,7 @@ async function handleSendMessage(event) {
                         }
                         if (data.session_id && !state.currentSessionId) {
                             state.currentSessionId = data.session_id;
+                            fetchSessions(); // Refresh list to add newly created session log
                         }
                     } catch (e) {
                         console.warn("MALFORMED_STREAM_CHUNK", e);
@@ -360,7 +421,6 @@ async function handleSendMessage(event) {
 
         if (window.triggerGlitch) window.triggerGlitch();
         
-        // Finalize metadata (lang detection could be improved but we use default/manual for speed)
         if (state.voiceEnabled) speakResponse(fullReply, state.preferredLang);
 
     } catch (err) {
@@ -378,15 +438,14 @@ function updateVoiceBtnUI() {
     if (!btn) return;
 
     if (state.voiceEnabled) {
-        btn.className = "mb-1 flex items-center justify-center h-11 w-12 rounded border border-cyber-blue/30 text-cyber-blue hover:bg-cyber-blue/5 transition-all";
+        btn.style.color = 'var(--cyber-blue, #00f0ff)';
         if (icon) {
-            icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>`;
+            icon.innerHTML = `<path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>`;
         }
     } else {
-        btn.className = "mb-1 flex items-center justify-center h-11 w-12 rounded border border-cyber-red/30 text-cyber-red hover:bg-cyber-red/5 transition-all";
+        btn.style.color = 'var(--cyber-red, #ff003c)';
         if (icon) {
-            icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>`;
+            icon.innerHTML = `<path d="M11 5L6 9H2v6h4l5 4V5z"></path><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>`;
         }
     }
 }
@@ -403,8 +462,8 @@ function toggleResponseMode() {
     localStorage.setItem('shadow_response_mode', state.responseMode);
     const status = document.getElementById('responseModeStatus');
     if (status) {
-        status.innerText = state.responseMode === 'direct' ? 'DIRECT' : 'SHADOW';
-        status.className = state.responseMode === 'direct' ? 'text-cyber-blue' : 'text-cyber-red';
+        status.innerText = state.responseMode.toUpperCase();
+        status.className = state.responseMode === 'direct' ? 'text-cyber-blue font-semibold' : 'text-cyber-red font-semibold';
     }
 }
 
@@ -412,14 +471,12 @@ async function speakResponse(text, lang) {
     const cleanText = text.replace(/[*#`_\[\]()]/g, '').replace(/!\[.*?\]\(.*?\)/g, '');
     if (!cleanText) return;
 
-    // Fast Fallback Protocol: Trigger standard voice if neural takes too long
     let neuralStarted = false;
     const fallbackTimeout = setTimeout(() => {
         if (!neuralStarted) {
-            console.log("[VOICE_SYSTEM]: Optimistic fallback triggered.");
             speakFallback(cleanText, lang);
         }
-    }, 450); // Improved timeout for better perceived speed
+    }, 450);
 
     try {
         const response = await fetch(`${API_BASE}/api/chat/tts`, {
@@ -443,7 +500,7 @@ async function speakResponse(text, lang) {
             }
         }
     } catch (err) {
-        // Fallback already handled by timeout
+        // Fallback triggers
     }
 }
 
@@ -482,18 +539,22 @@ function formatAIResponse(str) {
     
     renderer.code = (code, lang) => {
         const encodedCode = btoa(unescape(encodeURIComponent(code)));
-        const langClass = lang ? `language-${lang}` : '';
         const displayLang = lang ? lang.toUpperCase() : 'CODE';
         
         return `
-            <div class="code-block-container relative group my-4 border border-white/5 bg-black/40 rounded">
-                <div class="flex justify-between items-center px-4 py-2 border-b border-white/5 bg-black/20 text-[9px] uppercase font-black text-cyber-textSecondary">
+            <div class="code-block-container">
+                <div class="code-block-header">
                     <span>${displayLang}</span>
-                    <button onclick="loadCodeIntoWorkspace('${encodedCode}', '${lang || 'python'}')" class="text-cyber-blue hover:text-white transition-colors cursor-pointer select-none">
-                        LOAD_INTO_WORKSPACE
-                    </button>
+                    <div class="code-block-actions">
+                        <button onclick="copyCodeSnippet('${encodedCode}', this)" class="code-action-btn">
+                            COPY CODE
+                        </button>
+                        <button onclick="loadCodeIntoWorkspace('${encodedCode}', '${lang || 'python'}')" class="code-action-btn">
+                            LOAD TO WORKSPACE
+                        </button>
+                    </div>
                 </div>
-                <pre class="${langClass} p-4 overflow-x-auto text-sm"><code class="${langClass}">${code}</code></pre>
+                <pre class="p-4 overflow-x-auto text-sm"><code>${code}</code></pre>
             </div>
         `;
     };
@@ -522,6 +583,23 @@ function formatAIResponse(str) {
     return marked.parse(str);
 }
 
+// Copy Code Snippet implementation
+function copyCodeSnippet(encodedCode, buttonEl) {
+    const code = decodeURIComponent(escape(atob(encodedCode)));
+    navigator.clipboard.writeText(code).then(() => {
+        const originalText = buttonEl.innerText;
+        buttonEl.innerText = "COPIED!";
+        buttonEl.style.color = "var(--accent-color)";
+        setTimeout(() => {
+            buttonEl.innerText = originalText;
+            buttonEl.style.removeProperty('color');
+        }, 2000);
+    }).catch(err => {
+        console.error("Clipboard copy failure:", err);
+        alert("Clipboard copy block interrupted.");
+    });
+}
+
 function handleImageSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -531,17 +609,16 @@ function handleImageSelect(event) {
         reader.onload = e => {
             state.selectedImageData = e.target.result;
             state.selectedFileText = null;
+            
             const preview = document.getElementById('imagePreview');
             const container = document.getElementById('imagePreviewContainer');
             if (preview && container) {
                 preview.src = e.target.result;
-                preview.title = '';
                 container.classList.remove('hidden');
             }
         };
         reader.readAsDataURL(file);
     } else {
-        // Document/Code format
         const reader = new FileReader();
         reader.onload = e => {
             state.selectedFileText = {
@@ -553,10 +630,8 @@ function handleImageSelect(event) {
             const preview = document.getElementById('imagePreview');
             const container = document.getElementById('imagePreviewContainer');
             if (preview && container) {
-                // Generate tactical Document SVG Icon
-                const svgIcon = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="%2300ff9d" stroke-width="1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
+                const svgIcon = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="%2310a37f" stroke-width="1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
                 preview.src = svgIcon;
-                preview.title = file.name;
                 container.classList.remove('hidden');
             }
         };
@@ -570,7 +645,7 @@ function clearImage() {
     const preview = document.getElementById('imagePreview');
     const container = document.getElementById('imagePreviewContainer');
     const input = document.getElementById('imageInput');
-    if (preview) { preview.src = ''; preview.title = ''; }
+    if (preview) preview.src = '';
     if (container) container.classList.add('hidden');
     if (input) input.value = '';
 }
@@ -586,18 +661,19 @@ function quickAction(command) {
     const input = document.getElementById('chatInput');
     if (input) {
         input.value = command;
+        autoScaleTextarea(input);
         handleSendMessage();
     }
 }
 
-// Protocol Alpha: Voice Command Interface (STT)
+// Voice Recognition
 let recognition = null;
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = true;
-    recognition.lang = state.getBCP47(state.preferredLang || 'en-US'); // Dynamic language uplink
+    recognition.lang = state.getBCP47(state.preferredLang || 'en-US');
 
     recognition.onstart = () => {
         state.listening = true;
@@ -618,7 +694,7 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     };
 
     recognition.onerror = (event) => {
-        console.error('[PROTOCOL_ERROR]: Voice Uplink Failure:', event.error);
+        console.error('Voice input error:', event.error);
         stopListening();
     };
 
@@ -635,7 +711,7 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
 
 function toggleMicrophone() {
     if (!recognition) {
-        appendMessage('assistant', '[SYSTEM_ERROR]: Voice uplink hardware not detected by this browser.');
+        alert('Speech recognition is not supported in this browser.');
         return;
     }
     if (state.listening) {
@@ -648,11 +724,10 @@ function toggleMicrophone() {
 function startListening() {
     if (!recognition) return;
     try {
-        // Synchronize with the latest Neural Protocol via global mapper
         recognition.lang = state.getBCP47(state.preferredLang || 'en-US');
         recognition.start();
     } catch (e) {
-        console.warn('Recognition already active');
+        console.warn('Recognition active');
     }
 }
 
@@ -680,16 +755,16 @@ function showLanguageSelector() {
 
     modal.innerHTML = `
         <div class="p-6 border-b border-white/5 bg-black/40 flex justify-between items-center">
-            <h3 class="text-sm font-orbitron font-black text-cyber-blue uppercase tracking-[3px]">Select_Neural_Protocol</h3>
+            <h3 class="text-sm font-orbitron font-black text-cyber-blue uppercase tracking-[3px]">Language Configuration</h3>
             <button onclick="closeLanguageSelector()" class="text-cyber-red/50 hover:text-cyber-red">✕</button>
         </div>
-        <input type="text" id="langSearch" placeholder="SEARCH NEURAL VECTORS (E.G. TAMIL, HINDI, JAPANESE)..." 
+        <input type="text" id="langSearch" placeholder="Search language codes..." 
                class="cyber-search-input" oninput="filterLanguages(this.value)">
         <div class="lang-grid" id="langGrid">
             ${langOptions}
         </div>
         <div class="p-4 bg-cyber-red/5 border-t border-white/5 text-[9px] text-cyber-textSecondary uppercase tracking-widest text-center px-10">
-            Note: SHADOW will prioritize the selected vector for input recognition and speech synthesis.
+            Selected language applies to speech output synthesis and voice inputs.
         </div>
     `;
 
@@ -712,7 +787,7 @@ function filterLanguages(query) {
         `).join('');
     
     if (filteredHtml === '') {
-        filteredHtml = '<div class="col-span-full p-10 text-center text-cyber-red/50 text-xs uppercase tracking-widest">No matching neural vectors found.</div>';
+        filteredHtml = '<div class="col-span-full p-10 text-center text-cyber-red/50 text-xs uppercase tracking-widest">No match found</div>';
     }
     
     grid.innerHTML = filteredHtml;
@@ -725,7 +800,6 @@ function closeLanguageSelector() {
 
 function selectLanguageVector(langCode) {
     state.preferredLang = langCode;
-    state.manualLangOverride = true;
     localStorage.setItem('shadow_lang', langCode);
     
     const activeLangEl = document.getElementById('activeLang');
@@ -733,41 +807,29 @@ function selectLanguageVector(langCode) {
     
     closeLanguageSelector();
 
-    // AI Acknowledgment of Neural Vector Shift
     const langNames = {
         'ta-IN': 'Tamil (தமிழ்)', 'hi-IN': 'Hindi (हिन्दी)', 'ja-JP': 'Japanese (日本語)',
         'fr-FR': 'French (Français)', 'es-ES': 'Spanish (Español)', 'te-IN': 'Telugu (తెలుగు)',
-        'kn-IN': 'Kannada (ಕನ್ನಡ)', 'ml-IN': 'Malayalam (മലയാളம்)', 'bn-IN': 'Bengali (বাংলা)',
-        'mr-IN': 'Marathi (मराठी)', 'gu-IN': 'Gujarati (ગુજરાતી)', 'pa-IN': 'Punjabi (ਪੰਜਾਬੀ)',
+        'kn-IN': 'Kannada (ಕನ್ನಡ)', 'ml-IN': 'Malayalam (மலையாளம்)', 'bn-IN': 'Bengali (বাংলা)',
+        'mr-IN': 'Marathi (மராठी)', 'gu-IN': 'Gujarati (ગુજરાતી)', 'pa-IN': 'Punjabi (பண்பீ)',
         'ru-RU': 'Russian (Русский)', 'ar-SA': 'Arabic (العربية)', 'tr-TR': 'Turkish (Türkçe)',
         'vi-VN': 'Vietnamese (Tiếng Việt)', 'th-TH': 'Thai (ไทย)', 'id-ID': 'Indonesian (Bahasa)',
         'nl-NL': 'Dutch (Nederlands)', 'pl-PL': 'Polish (Polski)', 'el-GR': 'Greek (Ελληνικά)',
         'ko-KR': 'Korean (한국어)', 'zh-CN': 'Chinese (简体中文)', 'it-IT': 'Italian (Italiano)'
     };
     const langLabel = langNames[langCode] || langCode;
-    const ackMessage = langCode === 'ta-IN' ? 
-        `[SYSTEM]: Neural Vector synchronized. Communication protocols now optimized for **${langLabel}**. இப்போது நான் உங்களுடன் தமிழில் பேச முடியும்.` :
-        `[SYSTEM]: Neural Vector synchronized. Communication protocols now optimized for **${langLabel}**. Ready for tactical input.`;
     
-    appendMessage('assistant', ackMessage);
-    if (state.voiceEnabled) speakResponse(`Neural Vector Aligned. Language set to ${langLabel}`, 'en-US');
+    appendMessage('assistant', `[SYSTEM]: Unified neural communication vector aligned to **${langLabel}**.`);
+    if (state.voiceEnabled) speakResponse(`Language vector synchronized to ${langLabel}`, 'en-US');
     
-    // Impact: Synchronize STT recognition engine with the new Neural Protocol immediately
     if (recognition) {
         recognition.lang = langCode;
         if (state.listening) {
-            // Need to restart recognition to apply language change in some browsers
             try { 
                 recognition.stop(); 
                 setTimeout(() => { if (state.listening) recognition.start(); }, 100);
             } catch(e) {}
         }
-    }
-    
-    // Pulse animation on the footer label
-    if (activeLangEl) {
-        activeLangEl.classList.add('animate-pulse', 'text-white');
-        setTimeout(() => activeLangEl.classList.remove('animate-pulse', 'text-white'), 1000);
     }
 }
 
@@ -777,18 +839,23 @@ function updateMicUI() {
     if (!micBtn || !micIcon) return;
 
     if (state.listening) {
-        micBtn.classList.add('bg-cyber-blue/20', 'border-cyber-blue', 'animate-pulse');
-        micIcon.classList.add('text-cyber-blue');
+        micBtn.classList.add('speaking-glow', 'bg-cyber-blue/20');
+        micIcon.style.color = "var(--accent-color)";
     } else {
-        micBtn.classList.remove('bg-cyber-blue/20', 'border-cyber-blue', 'animate-pulse');
-        micIcon.classList.remove('text-cyber-blue');
+        micBtn.classList.remove('speaking-glow', 'bg-cyber-blue/20');
+        micIcon.style.removeProperty('color');
     }
 }
 
-// Model Selection Routing Override
 function changeModel(val) {
     state.preferredModel = val;
     localStorage.setItem('shadow_preferred_model', val);
+    
+    // Optimistically update top model dropdown indicator if available on UI
+    const indicator = document.querySelector('.indicator-pill span span');
+    if (indicator) {
+        indicator.innerText = val.toUpperCase();
+    }
 }
 
 function toggleCodeWorkspace() {
@@ -796,16 +863,17 @@ function toggleCodeWorkspace() {
     const status = document.getElementById('workspaceStatus');
     if (!ws || !status) return;
 
-    if (ws.classList.contains('w-0')) {
-        ws.classList.remove('w-0');
-        ws.classList.add('w-full', 'absolute', 'inset-0', 'z-40', 'lg:relative', 'lg:w-[500px]', 'lg:border-l', 'lg:z-auto');
+    state.workspaceOpen = !state.workspaceOpen;
+    localStorage.setItem('shadow_workspace_open', state.workspaceOpen);
+
+    if (state.workspaceOpen) {
+        ws.className = 'w-full absolute inset-0 z-40 lg:relative lg:w-[500px] lg:border-l lg:z-auto';
         status.innerText = 'ON';
-        status.className = 'text-cyber-blue';
+        status.className = 'font-semibold text-cyber-blue';
     } else {
-        ws.classList.add('w-0');
-        ws.classList.remove('w-full', 'absolute', 'inset-0', 'z-40', 'lg:relative', 'lg:w-[500px]', 'lg:border-l', 'lg:z-auto');
+        ws.className = 'w-0';
         status.innerText = 'OFF';
-        status.className = 'text-cyber-red';
+        status.className = 'font-semibold text-cyber-red';
     }
 }
 
@@ -816,7 +884,7 @@ function clearEditor() {
 
 function clearTerminal() {
     const terminal = document.getElementById('workspaceTerminal');
-    if (terminal) terminal.innerText = 'Ready for execution...';
+    if (terminal) terminal.innerText = 'Ready for compilation execution...';
 }
 
 async function runCode() {
@@ -831,21 +899,17 @@ async function runCode() {
     const lang = langSelect.value;
 
     if (!code.trim()) {
-        terminal.innerText = 'ERROR: No code provided to execute.';
+        terminal.innerText = 'ERROR: No source payload provided.';
         return;
     }
 
-    terminal.innerText = 'Initializing execution sandbox...\nRunning payload...';
+    terminal.innerText = 'Compiling sandbox container matrix...\nRunning payload execution thread...';
     runBtn.disabled = true;
     runBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
     try {
-        const headers = {
-            'Content-Type': 'application/json'
-        };
-        if (state.token) {
-            headers['Authorization'] = `Bearer ${state.token}`;
-        }
+        const headers = { 'Content-Type': 'application/json' };
+        if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
 
         const res = await fetch(`${API_BASE}/api/chat/execute`, {
             method: 'POST',
@@ -859,13 +923,13 @@ async function runCode() {
             if (data.stdout) output += data.stdout;
             if (data.stderr) output += (output ? '\n' : '') + 'STDERR:\n' + data.stderr;
             
-            output = output || 'Code executed successfully with no output.';
-            terminal.innerText = `${output}\n\n[Process completed with exit code: ${data.exit_code}]`;
+            output = output || 'Code executed successfully with zero console output.';
+            terminal.innerText = `${output}\n\n[Process completed. Sandbox exit code: ${data.exit_code}]`;
         } else {
-            terminal.innerText = `SYSTEM_FAILURE: ${data.detail || 'Failed to execute code'}`;
+            terminal.innerText = `SYSTEM_FAILURE: ${data.detail || 'Failed compilation response'}`;
         }
     } catch (err) {
-        terminal.innerText = `CONNECTION_ERROR: Failed to reach sandbox executor. ${err.message}`;
+        terminal.innerText = `SANDBOX_LINK_ERROR: ${err.message}`;
     } finally {
         runBtn.disabled = false;
         runBtn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -876,18 +940,13 @@ function loadCodeIntoWorkspace(encodedCode, lang) {
     const code = decodeURIComponent(escape(atob(encodedCode)));
     
     // Ensure workspace is open
-    const ws = document.getElementById('codeWorkspace');
-    if (ws && ws.classList.contains('w-0')) {
+    if (!state.workspaceOpen) {
         toggleCodeWorkspace();
     }
     
-    // Set code in editor
     const editor = document.getElementById('workspaceEditor');
-    if (editor) {
-        editor.value = code;
-    }
+    if (editor) editor.value = code;
     
-    // Set language in dropdown
     const langSelect = document.getElementById('codeLangSelect');
     if (langSelect) {
         const normalizedLang = lang.toLowerCase();
@@ -901,4 +960,8 @@ function loadCodeIntoWorkspace(encodedCode, lang) {
     }
 }
 
-
+// React to global theme change events
+window.addEventListener('themechanged', (e) => {
+    // If matrix canvas exists and we shifted themes, draw frame triggers
+    initNeuralMatrix();
+});

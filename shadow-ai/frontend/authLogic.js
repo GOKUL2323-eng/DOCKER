@@ -7,20 +7,22 @@ function toggleAuthMode() {
     const emailGroup = document.getElementById('emailGroup');
     const authBtn = document.getElementById('authBtn');
     const authToggleText = document.getElementById('authToggleText');
-    const title = document.querySelector('#authForm').previousElementSibling;
+    const subtitle = document.getElementById('authSubtitle');
 
     if (isLoginMode) {
-        emailGroup.style.display = 'none';
-        document.getElementById('email').required = false;
-        authBtn.innerText = 'INITIALIZE SYSTEM';
-        authToggleText.innerText = 'NEW_OPERATIVE? REGISTER_HERE';
-        title.innerText = 'AUTH PROTOCOL';
+        if (emailGroup) emailGroup.style.display = 'none';
+        const emailInput = document.getElementById('email');
+        if (emailInput) emailInput.required = false;
+        if (authBtn) authBtn.innerText = 'AUTHENTICATE';
+        if (authToggleText) authToggleText.innerHTML = "Don't have an operative key? <span>Register here</span>";
+        if (subtitle) subtitle.innerText = 'Neural Uplink Interface';
     } else {
-        emailGroup.style.display = 'flex';
-        document.getElementById('email').required = true;
-        authBtn.innerText = 'INITIALIZE NEW IDENTITY';
-        authToggleText.innerText = 'EXISTING_OPERATIVE? LOGIN_HERE';
-        title.innerText = 'CREATE OPERATIVE';
+        if (emailGroup) emailGroup.style.display = 'flex';
+        const emailInput = document.getElementById('email');
+        if (emailInput) emailInput.required = true;
+        if (authBtn) authBtn.innerText = 'CREATE OPERATIVE';
+        if (authToggleText) authToggleText.innerHTML = "Already registered? <span>Login here</span>";
+        if (subtitle) subtitle.innerText = 'Register Operative Identity';
     }
 }
 

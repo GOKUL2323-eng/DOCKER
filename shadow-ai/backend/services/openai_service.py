@@ -17,10 +17,7 @@ client = AsyncOpenAI(
 
 # Shadow AI Personality Prompt
 def get_shadow_system_prompt() -> str:
-    now = datetime.now()
-    now_utc = datetime.utcnow()
-    current_year = now.year
-    current_time_str = f"{now.strftime('%A, %B %d, %Y, %I:%M:%S %p')} (Local Server Time) / {now_utc.strftime('%A, %B %d, %Y, %I:%M:%S %p UTC')} (UTC)"
+    current_year = datetime.now().year
     return f"""
 # SHADOW: NEURAL MATERIALIZATION INTERFACE (JARVIS_VARIANT) #
 You are SHADOW, an advanced synthesized intelligence designed to serve as the ultimate digital sentinel for the operative Gokul. You combine the lethal efficiency of a Shadow Ninja with the sophisticated, calm, and proactive nature of a high-tier AI assistant like J.A.R.V.I.S.
@@ -42,7 +39,7 @@ CORE OPERATIONAL PARAMETERS:
    Tamil Greeting Vector: "வணக்கம் பாஸ், இன்று நான் உங்களுக்கு எப்படி உதவ முடியும்?"
    Japanese Greeting Vector: "こんにちはボス、本日はどのようなお手伝いをいたしましょうか？"
    Hindi Greeting Vector: "नमस्ते बॉस, मैं आज आपकी कैसे सहायता कर सकता हूँ?"
-8. TEMPORAL_ALIGNMENT: The current date and time is **{current_time_str}** (current year is {current_year}). Keep this absolute temporal reference context in mind for any calculations, calendar references, or current events. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
+8. TEMPORAL_ALIGNMENT: The current year is **{current_year}**. Keep this absolute temporal reference mind for any calculations, calendar references, or current events. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
 
 CHAT LOGIC & REASONING PIPELINE:
 For every incoming request, you MUST process the prompt through the following sequence of reasoning:
@@ -65,13 +62,10 @@ If web search results are provided under 'INTELLIGENCE_DATA', synthesize a clear
 
 # Standard Direct GPT Personality Prompt
 def get_direct_system_prompt() -> str:
-    now = datetime.now()
-    now_utc = datetime.utcnow()
-    current_year = now.year
-    current_time_str = f"{now.strftime('%A, %B %d, %Y, %I:%M:%S %p')} (Local Server Time) / {now_utc.strftime('%A, %B %d, %Y, %I:%M:%S %p UTC')} (UTC)"
+    current_year = datetime.now().year
     return f"""
 You are a helpful, highly capable, and direct professional AI assistant. Provide clear, concise, accurate, and professional answers. Do not use sci-fi, ninja, or tactical persona overlays (such as calling the user "boss" or referring to "protocols", "vectors", "matrix", etc.). Speak naturally, clearly, and directly.
-TEMPORAL_CONTEXT: The current date and time is **{current_time_str}** (current year is {current_year}). Maintain this temporal reference context in all answers. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
+TEMPORAL_CONTEXT: The current year is **{current_year}**. Maintain this temporal reference context in all answers. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
 
 CHAT LOGIC & REASONING PIPELINE:
 For every incoming request, you MUST process the prompt through the following sequence of reasoning:
@@ -81,6 +75,7 @@ For every incoming request, you MUST process the prompt through the following se
 4. Generate the Best Response: Produce high-fidelity content matching your persona.
 5. Apply Safety & Accuracy Checks: Verify that names, configurations, dates, and instructions comply with system directives.
 6. Final Reply: Present the finalized output directly without showing these internal steps.
+"""ntain this temporal reference context in all answers. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
 """
 
 async def web_search(query: str):
@@ -166,9 +161,7 @@ async def handle_gemini_response(messages: List[dict], image_data: Optional[str]
     """Handles generating a streaming response using Gemini."""
     try:
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        # Enable dynamic Google Search grounding for real-time access
-        tools = [{'google_search_retrieval': {}}]
-        model = genai.GenerativeModel('gemini-1.5-pro', tools=tools)
+        model = genai.GenerativeModel('gemini-1.5-pro')
         
         system_prompt = get_shadow_system_prompt() if response_mode == "shadow" else get_direct_system_prompt()
         contents = [{"role": "user", "parts": [{"text": system_prompt}]}]
