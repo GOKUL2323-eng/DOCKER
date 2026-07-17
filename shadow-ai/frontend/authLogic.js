@@ -133,7 +133,10 @@ async function initGoogleSignIn() {
         const config = await res.json();
         
         if (!config.google_client_id) {
-            container.innerHTML = `<p class="text-[10px] text-cyber-red/50 uppercase tracking-widest font-black text-center">Google Client ID Not Configured</p>`;
+            container.innerHTML = `<div class="text-[9px] text-cyber-blue/40 uppercase tracking-widest font-mono text-center flex flex-col items-center gap-1 select-none">
+                <span>● LOCAL AUTH PROTOCOL ACTIVE</span>
+                <span class="text-[8px] opacity-60">Google Federation Link Standby</span>
+            </div>`;
             return;
         }
 

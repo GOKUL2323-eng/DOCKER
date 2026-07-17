@@ -1432,3 +1432,52 @@ body {
         z-index: 60;
     }
 }
+
+/* Cyberpunk Input Styling */
+.cyber-input {
+    background: rgba(10, 10, 15, 0.7);
+    border: 1px solid rgba(57, 255, 20, 0.25);
+    color: #39ff14; /* Neon green text */
+    border-radius: 8px;
+    outline: none;
+    transition: all 0.25s ease;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 500;
+}
+
+.cyber-input:focus {
+    border-color: #00f0ff; /* Neon cyan focus */
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.35);
+    background: rgba(10, 10, 15, 0.95);
+}
+
+.cyber-input::placeholder {
+    color: rgba(57, 255, 20, 0.35);
+    letter-spacing: 0.1em;
+}
+
+/* Cyberpunk Button Styling */
+.cyber-btn {
+    background: rgba(57, 255, 20, 0.1);
+    border: 1px solid #39ff14;
+    color: #39ff14;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.1);
+}
+
+.cyber-btn:hover {
+    background: #39ff14;
+    color: #000;
+    box-shadow: 0 0 25px rgba(57, 255, 20, 0.45);
+    transform: translateY(-2px);
+}
+
+.cyber-btn:active {
+    transform: translateY(0);
+}

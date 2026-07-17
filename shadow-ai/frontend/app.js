@@ -74,7 +74,7 @@ var state = window.state;
 // View management logic
 const views = {
     auth: () => `
-        <div class="flex-1 flex items-center justify-center p-4 overflow-auto bg-cyber-black">
+        <div class="flex-1 flex items-center justify-center p-4 overflow-auto bg-transparent">
             <div class="w-full max-w-md">
                 <div class="text-center mb-10 flex flex-col items-center">
                     <div class="w-24 h-24 rounded-full border border-cyber-red/40 p-1 mb-6 bg-black shadow-[0_0_30px_rgba(255,0,60,0.15)] overflow-hidden animate-float">
