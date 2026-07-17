@@ -10,7 +10,7 @@ if os.path.exists(env_path):
 else:
     load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = (os.getenv("DATABASE_URL") or "").strip()
 if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
     if DATABASE_URL and (DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://")):
         if DATABASE_URL.startswith("postgres://"):
