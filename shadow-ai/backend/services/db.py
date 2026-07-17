@@ -73,7 +73,16 @@ AsyncSessionLocal = async_sessionmaker(
 
 Base = declarative_base()
 
+_db_initialized = False
+
 async def get_db():
+    global _db_initialized
+    if not _db_initialized:
+        try:
+            await init_db()
+            _db_initialized = True
+        except Exception as e:
+            print(f"[DB_INIT_ERROR]: {e}")
     async with AsyncSessionLocal() as session:
         yield session
 
