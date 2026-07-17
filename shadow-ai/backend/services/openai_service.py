@@ -238,7 +238,7 @@ async def handle_openai_response(messages: List[dict], response_mode: str = "sha
 
         client = get_openai_client()
         stream = await client.chat.completions.create(
-            model="deepseek-v4-pro",
+            model="deepseek-v4-flash",
             messages=formatted_messages,
             temperature=0.7,
             max_tokens=2048,
@@ -249,9 +249,8 @@ async def handle_openai_response(messages: List[dict], response_mode: str = "sha
             if content:
                 yield content
     except Exception as e:
-        error_msg = f"[ERROR]: OpenAI Link Failure: {str(e)}"
-        print(error_msg)
-        yield error_msg
+        print(f"[ERROR]: OpenAI Link Failure: {str(e)}")
+        yield None
 
 def extract_original_query(msg_content: str) -> str:
     if "OPERATIVE_QUERY:" in msg_content:
