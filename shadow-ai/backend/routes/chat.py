@@ -53,13 +53,15 @@ async def debug_env():
     import os
     import httpx
     from pathlib import Path
+    from services.openai_service import client
     env_path = Path(__file__).resolve().parent.parent / ".env"
     exists = env_path.exists()
     openai_key = os.getenv("OPENAI_API_KEY", "")
     
     test_result = "not run"
+    client_test = "not run"
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as http_client:
             headers = {
                 "Authorization": f"Bearer {openai_key}",
                 "Content-Type": "application/json"
@@ -69,19 +71,30 @@ async def debug_env():
                 "messages": [{"role": "user", "content": "hi"}],
                 "max_tokens": 10
             }
-            res = await client.post("https://api.ai.cc/v1/chat/completions", json=payload, headers=headers)
+            res = await http_client.post("https://api.ai.cc/v1/chat/completions", json=payload, headers=headers)
             test_result = {
                 "status_code": res.status_code,
                 "content": res.text[:200]
             }
+            
+        stream = await client.chat.completions.create(
+            model="deepseek-v4-pro",
+            messages=[{"role": "user", "content": "hi"}],
+            max_tokens=10,
+            stream=True
+        )
+        chunks = []
+        async for chunk in stream:
+            chunks.append(str(chunk.choices[0].delta))
+        client_test = {"chunks_count": len(chunks), "first_chunks": chunks[:3]}
     except Exception as e:
-        test_result = f"Error: {e}"
+        client_test = f"Error: {e}"
         
     return {
         "env_exists": exists,
-        "env_size": env_path.stat().st_size if exists else 0,
         "openai_key_preview": openai_key[:10] if openai_key else "None",
         "test_api_result": test_result,
+        "client_test_result": client_test,
         "vercel_env": os.getenv("VERCEL_ENV", "None"),
     }
 
