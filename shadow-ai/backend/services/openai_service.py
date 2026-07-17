@@ -243,7 +243,11 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
     # CHAT LOGIC - STEP 1: Understand Intent
     last_msg_lower = last_msg_content.lower()
     is_image_request = any(word in last_msg_lower for word in ["image", "generate", "draw", "visualize", "create a picture", "materialize", "render", "show a picture", "paint"])
-    is_search_request = any(word in last_msg_lower for word in ["search", "find", "scan", "web_scan", "web-scan", "google"])
+    is_search_request = any(word in last_msg_lower for word in [
+        "search", "find", "scan", "web_scan", "web-scan", "google", 
+        "who won", "winner", "ipl", "score", "match", "result", "latest", 
+        "news", "current", "weather", "today", "who is", "what is the status of"
+    ])
 
     # CHAT LOGIC - STEP 2: Use Context
     neural_archive_data = []
