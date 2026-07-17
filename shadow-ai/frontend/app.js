@@ -82,6 +82,10 @@ const views = {
                     </div>
                     <h1 class="text-5xl font-orbitron font-black tracking-tighter text-cyber-blue italic mb-2 glitch-text">SHADOW AI</h1>
                     <p class="text-cyber-textSecondary tracking-[0.3em] text-[10px] uppercase font-bold opacity-80">Tier-1 Neural Interface</p>
+                    <div class="h-6 mt-4 flex items-center justify-center gap-0.5">
+                        <span id="typewriterText" class="text-[10px] font-mono text-cyber-blue tracking-[2px] uppercase opacity-75"></span>
+                        <span class="typewriter-cursor bg-cyber-blue w-1 h-3 ml-0.5 animate-pulse"></span>
+                    </div>
                 </div>
 
                 <div class="cyber-panel p-10">
@@ -440,7 +444,12 @@ function showSystemCore() {
 }
 
 // Navigation
+let typewriterTimeout = null;
 function navigate(viewName) {
+    if (typewriterTimeout) {
+        clearTimeout(typewriterTimeout);
+        typewriterTimeout = null;
+    }
     const app = document.getElementById('app');
     if (views[viewName]) {
         app.innerHTML = views[viewName]();
@@ -456,6 +465,7 @@ function navigate(viewName) {
             if (typeof initGoogleSignIn === 'function') {
                 initGoogleSignIn();
             }
+            startLoginTypewriter();
         }
     }
 }
@@ -535,6 +545,60 @@ async function handleSocialAuth(provider) {
     
     // Redirect to backend OAuth initiation endpoint
     window.location.href = `/auth/login/${provider}`;
+}
+
+function startLoginTypewriter() {
+    if (typewriterTimeout) clearTimeout(typewriterTimeout);
+    
+    const target = document.getElementById('typewriterText');
+    if (!target) return;
+    
+    const messages = [
+        "SYSTEM INITIALIZING...",
+        "ESTABLISHING SECURE NEURAL LINK...",
+        "DECRYPTING QUANTUM PROTOCOLS...",
+        "LOADING ARCHIVE VECTOR MATRIX...",
+        "ACCESS RESTRICTED: OPERATIVES ONLY...",
+        "SHADOW SENTINEL ONLINE..."
+    ];
+    
+    let msgIndex = 0;
+    let charIndex = 0;
+    let isDeleting = false;
+    let currentText = "";
+    
+    function tick() {
+        const fullTxt = messages[msgIndex];
+        
+        if (isDeleting) {
+            currentText = fullTxt.substring(0, charIndex - 1);
+            charIndex--;
+        } else {
+            currentText = fullTxt.substring(0, charIndex + 1);
+            charIndex++;
+        }
+        
+        target.innerText = currentText;
+        
+        let delta = 100 - Math.random() * 50;
+        
+        if (isDeleting) {
+            delta /= 2;
+        }
+        
+        if (!isDeleting && charIndex === fullTxt.length) {
+            delta = 2000;
+            isDeleting = true;
+        } else if (isDeleting && charIndex === 0) {
+            isDeleting = false;
+            msgIndex = (msgIndex + 1) % messages.length;
+            delta = 500;
+        }
+        
+        typewriterTimeout = setTimeout(tick, delta);
+    }
+    
+    tick();
 }
 
 
