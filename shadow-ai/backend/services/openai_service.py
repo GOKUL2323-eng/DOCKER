@@ -9,11 +9,14 @@ from services.translation_service import TranslationService
 from services.memory_service import MemoryService
 from datetime import datetime
 
-client = AsyncOpenAI(
-    api_key=settings.OPENAI_API_KEY or "missing-openai-api-key",
-    base_url="https://api.ai.cc/v1",
-    timeout=60.0 
-)
+def get_openai_client() -> AsyncOpenAI:
+    import os
+    key = getattr(settings, "OPENAI_API_KEY", None) or os.getenv("OPENAI_API_KEY", "")
+    return AsyncOpenAI(
+        api_key=key,
+        base_url="https://api.ai.cc/v1",
+        timeout=60.0
+    )
 
 # Shadow AI Personality Prompt
 def get_shadow_system_prompt() -> str:
@@ -170,6 +173,7 @@ async def materialize_visual_construct(prompt: str):
     # Try DALL-E 3 if key is available
     if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY.strip():
         try:
+            client = get_openai_client()
             response = await client.images.generate(
                 model="dall-e-3",
                 prompt=tactical_prompt,
@@ -232,6 +236,7 @@ async def handle_openai_response(messages: List[dict], response_mode: str = "sha
         for msg in messages:
             formatted_messages.append({"role": msg["role"], "content": msg["content"]})
 
+        client = get_openai_client()
         stream = await client.chat.completions.create(
             model="deepseek-v4-pro",
             messages=formatted_messages,
