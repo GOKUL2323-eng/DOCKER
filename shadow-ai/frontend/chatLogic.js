@@ -40,14 +40,107 @@ async function fetchSessions() {
 
         const sessions = await res.json();
         sessionList.innerHTML = sessions.map(s => `
-            <div onclick="selectSession('${s.id}')" class="group cursor-pointer p-4 border border-white/5 bg-white/5 hover:bg-cyber-blue/5 hover:border-cyber-blue/20 transition-all relative overflow-hidden">
+            <div id="session-item-${s.id}" class="group p-4 border border-white/5 bg-white/5 hover:bg-cyber-blue/5 hover:border-cyber-blue/20 transition-all relative overflow-hidden flex justify-between items-center">
                 <div class="absolute left-0 top-0 w-0.5 h-full bg-cyber-blue opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div class="text-[10px] text-cyber-blue/50 font-black uppercase tracking-widest mb-1">${new Date(s.updated_at).toLocaleDateString()}</div>
-                <div class="text-xs font-bold text-cyber-textPrimary truncate">${s.title || 'NULL_SUBJECT'}</div>
+                <div onclick="selectSession('${s.id}')" class="flex-1 cursor-pointer min-w-0 pr-2">
+                    <div class="text-[10px] text-cyber-blue/50 font-black uppercase tracking-widest mb-1">${new Date(s.updated_at).toLocaleDateString()}</div>
+                    <div class="text-xs font-bold text-cyber-textPrimary truncate" id="session-text-${s.id}">${s.title || 'NULL_SUBJECT'}</div>
+                </div>
+                <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" id="session-actions-${s.id}">
+                    <button onclick="startRenameSession('${s.id}', event)" class="p-1 text-cyber-textSecondary hover:text-cyber-blue transition-colors" title="Rename log">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                    </button>
+                    <button onclick="deleteSession('${s.id}', event)" class="p-1 text-cyber-red/80 hover:text-cyber-red transition-colors" title="Delete log">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </div>
             </div>
         `).join('');
     } catch (err) {
         sessionList.innerHTML = `<div class="text-[9px] text-cyber-red/50 uppercase font-black text-center p-4">Uplink_Error: ${err.message}</div>`;
+    }
+}
+
+function startRenameSession(id, event) {
+    if (event) event.stopPropagation();
+    const textSpan = document.getElementById(`session-text-${id}`);
+    const actionsDiv = document.getElementById(`session-actions-${id}`);
+    if (!textSpan || !actionsDiv) return;
+
+    const currentTitle = textSpan.innerText;
+    
+    textSpan.outerHTML = `<input type="text" class="bg-black/50 border border-cyber-blue/30 text-xs font-bold text-cyber-textPrimary px-1 rounded focus:outline-none focus:border-cyber-blue w-full" id="session-input-${id}" value="${currentTitle}" onkeydown="handleRenameKeydown('${id}', event)" onblur="saveRenameSession('${id}')" />`;
+    actionsDiv.style.setProperty('display', 'none', 'important');
+
+    const inputEl = document.getElementById(`session-input-${id}`);
+    if (inputEl) {
+        inputEl.focus();
+        inputEl.select();
+    }
+}
+
+function handleRenameKeydown(id, event) {
+    if (event.key === 'Enter') {
+        saveRenameSession(id);
+    } else if (event.key === 'Escape') {
+        cancelRenameSession(id);
+    }
+}
+
+async function saveRenameSession(id) {
+    const inputEl = document.getElementById(`session-input-${id}`);
+    if (!inputEl) return;
+    
+    const newTitle = inputEl.value.trim();
+    if (!newTitle) {
+        cancelRenameSession(id);
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/api/chat/sessions/${id}`, {
+            method: 'PATCH',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${state.token}`
+            },
+            body: JSON.stringify({ title: newTitle })
+        });
+        if (!res.ok) throw new Error("Rename failed");
+        fetchSessions();
+    } catch (err) {
+        console.error("Rename session log failed:", err);
+        fetchSessions();
+    }
+}
+
+function cancelRenameSession(id) {
+    fetchSessions();
+}
+
+async function deleteSession(id, event) {
+    if (event) event.stopPropagation();
+    
+    if (!confirm("Are you sure you want to terminate this operational thread log?")) return;
+
+    const item = document.getElementById(`session-item-${id}`);
+    if (item) item.remove();
+
+    try {
+        const res = await fetch(`${API_BASE}/api/chat/sessions/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        
+        if (!res.ok) throw new Error("Delete failed");
+        
+        if (state.currentSessionId === id) {
+            startNewSession();
+        }
+        fetchSessions();
+    } catch (err) {
+        console.error("Delete session failure:", err);
+        fetchSessions();
     }
 }
 

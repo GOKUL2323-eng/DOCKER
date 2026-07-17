@@ -179,6 +179,53 @@ async def get_session_details(session_id: str, current_user: UserInDB = Depends(
         ]
     }
 
+class SessionUpdateRequest(BaseModel):
+    title: str
+
+@router.delete("/sessions/{session_id}")
+async def delete_session(
+    session_id: str, 
+    current_user: UserInDB = Depends(get_current_user), 
+    db: AsyncSession = Depends(get_db)
+):
+    user_id = current_user.id if current_user else "guest-user"
+    
+    result = await db.execute(
+        select(ChatSessionDB)
+        .where(ChatSessionDB.id == session_id, ChatSessionDB.user_id == user_id)
+    )
+    session = result.scalars().first()
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+        
+    await db.delete(session)
+    await db.commit()
+    return {"status": "success", "message": "Session deleted"}
+
+@router.patch("/sessions/{session_id}")
+async def update_session(
+    session_id: str, 
+    request: SessionUpdateRequest, 
+    current_user: UserInDB = Depends(get_current_user), 
+    db: AsyncSession = Depends(get_db)
+):
+    user_id = current_user.id if current_user else "guest-user"
+    
+    result = await db.execute(
+        select(ChatSessionDB)
+        .where(ChatSessionDB.id == session_id, ChatSessionDB.user_id == user_id)
+    )
+    session = result.scalars().first()
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+        
+    session.title = request.title
+    session.updated_at = datetime.utcnow()
+    await db.commit()
+    return {"status": "success", "message": "Session updated", "title": session.title}
+
 @router.post("/execute")
 async def execute_code_payload(request: CodeExecuteRequest):
     """
