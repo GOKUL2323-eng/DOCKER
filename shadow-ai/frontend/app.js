@@ -82,10 +82,6 @@ const views = {
                     </div>
                     <h1 class="text-5xl font-orbitron font-black tracking-tighter text-cyber-blue italic mb-2 glitch-text">SHADOW AI</h1>
                     <p class="text-cyber-textSecondary tracking-[0.3em] text-[10px] uppercase font-bold opacity-80">Tier-1 Neural Interface</p>
-                    <div class="h-6 mt-4 flex items-center justify-center gap-0.5">
-                        <span id="typewriterText" class="text-[10px] font-mono text-cyber-blue tracking-[2px] uppercase opacity-75"></span>
-                        <span class="typewriter-cursor bg-cyber-blue w-1 h-3 ml-0.5 animate-pulse"></span>
-                    </div>
                 </div>
 
                 <div class="cyber-panel p-10">
@@ -174,19 +170,10 @@ const views = {
                 </div>
 
                 <div class="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-2">
-                    <div class="flex flex-col gap-2">
-                        <button onclick="startNewSession()" class="w-full flex items-center justify-between p-4 text-[10px] font-black border border-cyber-blue/20 text-cyber-blue hover:bg-cyber-blue/5 transition-all uppercase tracking-[3px] group">
-                            <span>NEW_DEPLOYMENT</span>
-                            <span class="group-hover:translate-x-1 transition-transform">→</span>
-                        </button>
-                        <button onclick="clearHistory()" class="w-full flex items-center justify-between p-4 text-[10px] font-black border border-cyber-red/20 text-cyber-red hover:bg-cyber-red/5 transition-all uppercase tracking-[3px] group">
-                            <span>CLEAR_HISTORY</span>
-                            <svg class="group-hover:rotate-12 transition-transform" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            </svg>
-                        </button>
-                    </div>
+                    <button onclick="startNewSession()" class="w-full flex items-center justify-between p-4 text-[10px] font-black border border-cyber-blue/20 text-cyber-blue hover:bg-cyber-blue/5 transition-all uppercase tracking-[3px] group">
+                        <span>NEW_DEPLOYMENT</span>
+                        <span class="group-hover:translate-x-1 transition-transform">→</span>
+                    </button>
                     <div id="sessionList" class="space-y-2">
                         <!-- Sessions rendered here -->
                     </div>
@@ -444,12 +431,7 @@ function showSystemCore() {
 }
 
 // Navigation
-let typewriterTimeout = null;
 function navigate(viewName) {
-    if (typewriterTimeout) {
-        clearTimeout(typewriterTimeout);
-        typewriterTimeout = null;
-    }
     const app = document.getElementById('app');
     if (views[viewName]) {
         app.innerHTML = views[viewName]();
@@ -465,7 +447,6 @@ function navigate(viewName) {
             if (typeof initGoogleSignIn === 'function') {
                 initGoogleSignIn();
             }
-            startLoginTypewriter();
         }
     }
 }
@@ -545,60 +526,6 @@ async function handleSocialAuth(provider) {
     
     // Redirect to backend OAuth initiation endpoint
     window.location.href = `/auth/login/${provider}`;
-}
-
-function startLoginTypewriter() {
-    if (typewriterTimeout) clearTimeout(typewriterTimeout);
-    
-    const target = document.getElementById('typewriterText');
-    if (!target) return;
-    
-    const messages = [
-        "SYSTEM INITIALIZING...",
-        "ESTABLISHING SECURE NEURAL LINK...",
-        "DECRYPTING QUANTUM PROTOCOLS...",
-        "LOADING ARCHIVE VECTOR MATRIX...",
-        "ACCESS RESTRICTED: OPERATIVES ONLY...",
-        "SHADOW SENTINEL ONLINE..."
-    ];
-    
-    let msgIndex = 0;
-    let charIndex = 0;
-    let isDeleting = false;
-    let currentText = "";
-    
-    function tick() {
-        const fullTxt = messages[msgIndex];
-        
-        if (isDeleting) {
-            currentText = fullTxt.substring(0, charIndex - 1);
-            charIndex--;
-        } else {
-            currentText = fullTxt.substring(0, charIndex + 1);
-            charIndex++;
-        }
-        
-        target.innerText = currentText;
-        
-        let delta = 100 - Math.random() * 50;
-        
-        if (isDeleting) {
-            delta /= 2;
-        }
-        
-        if (!isDeleting && charIndex === fullTxt.length) {
-            delta = 2000;
-            isDeleting = true;
-        } else if (isDeleting && charIndex === 0) {
-            isDeleting = false;
-            msgIndex = (msgIndex + 1) % messages.length;
-            delta = 500;
-        }
-        
-        typewriterTimeout = setTimeout(tick, delta);
-    }
-    
-    tick();
 }
 
 
