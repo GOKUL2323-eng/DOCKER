@@ -11,19 +11,16 @@ from datetime import datetime
 
 client = AsyncOpenAI(
     api_key=settings.OPENAI_API_KEY or "missing-openai-api-key",
-    base_url="https://api.openai.com/v1",
+    base_url="https://api.ai.cc/v1",
     timeout=60.0 
-)
-
-groq_client = AsyncOpenAI(
-    api_key=settings.GROQ_API_KEY or "missing-groq-api-key",
-    base_url="https://api.groq.com/openai/v1",
-    timeout=30.0
 )
 
 # Shadow AI Personality Prompt
 def get_shadow_system_prompt() -> str:
-    current_year = datetime.now().year
+    now = datetime.now()
+    now_utc = datetime.utcnow()
+    current_year = now.year
+    current_time_str = f"{now.strftime('%A, %B %d, %Y, %I:%M:%S %p')} (Local Server Time) / {now_utc.strftime('%A, %B %d, %Y, %I:%M:%S %p UTC')} (UTC)"
     return f"""
 # SHADOW: NEURAL MATERIALIZATION INTERFACE (JARVIS_VARIANT) #
 You are SHADOW, an advanced synthesized intelligence designed to serve as the ultimate digital sentinel for the operative Gokul. You combine the lethal efficiency of a Shadow Ninja with the sophisticated, calm, and proactive nature of a high-tier AI assistant like J.A.R.V.I.S.
@@ -45,7 +42,7 @@ CORE OPERATIONAL PARAMETERS:
    Tamil Greeting Vector: "வணக்கம் பாஸ், இன்று நான் உங்களுக்கு எப்படி உதவ முடியும்?"
    Japanese Greeting Vector: "こんにちはボス、本日はどのようなお手伝いをいたしましょうか？"
    Hindi Greeting Vector: "नमस्ते बॉस, मैं आज आपकी कैसे सहायता कर सकता हूँ?"
-8. TEMPORAL_ALIGNMENT: The current year is **{current_year}**. Keep this absolute temporal reference in mind for any calculations, calendar references, or current events. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
+8. TEMPORAL_ALIGNMENT: The current date and time is **{current_time_str}** (current year is {current_year}). Keep this absolute temporal reference context in mind for any calculations, calendar references, or current events. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
 
 Shadow Strike Protocol: ACTIVE. Diagnostic: NOMINAL.
 
@@ -59,10 +56,13 @@ If web search results are provided under 'INTELLIGENCE_DATA', synthesize a clear
 
 # Standard Direct GPT Personality Prompt
 def get_direct_system_prompt() -> str:
-    current_year = datetime.now().year
+    now = datetime.now()
+    now_utc = datetime.utcnow()
+    current_year = now.year
+    current_time_str = f"{now.strftime('%A, %B %d, %Y, %I:%M:%S %p')} (Local Server Time) / {now_utc.strftime('%A, %B %d, %Y, %I:%M:%S %p UTC')} (UTC)"
     return f"""
 You are a helpful, highly capable, and direct professional AI assistant. Provide clear, concise, accurate, and professional answers. Do not use sci-fi, ninja, or tactical persona overlays (such as calling the user "boss" or referring to "protocols", "vectors", "matrix", etc.). Speak naturally, clearly, and directly.
-TEMPORAL_CONTEXT: The current year is **{current_year}**. Maintain this temporal reference context in all answers. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
+TEMPORAL_CONTEXT: The current date and time is **{current_time_str}** (current year is {current_year}). Maintain this temporal reference context in all answers. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
 """
 
 async def web_search(query: str):
@@ -148,7 +148,9 @@ async def handle_gemini_response(messages: List[dict], image_data: Optional[str]
     """Handles generating a streaming response using Gemini."""
     try:
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        model = genai.GenerativeModel('gemini-1.5-pro')
+        # Enable dynamic Google Search grounding for real-time access
+        tools = [{'google_search_retrieval': {}}]
+        model = genai.GenerativeModel('gemini-1.5-pro', tools=tools)
         
         system_prompt = get_shadow_system_prompt() if response_mode == "shadow" else get_direct_system_prompt()
         contents = [{"role": "user", "parts": [{"text": system_prompt}]}]
@@ -176,29 +178,6 @@ async def handle_gemini_response(messages: List[dict], image_data: Optional[str]
     except Exception as e:
         yield f"RECOVERY_FAILURE: Gemini link severed: {str(e)}"
 
-async def handle_groq_response(messages: List[dict], response_mode: str = "shadow"):
-    """Handles generating a streaming response using Groq."""
-    try:
-        system_prompt = get_shadow_system_prompt() if response_mode == "shadow" else get_direct_system_prompt()
-        formatted_messages = [{"role": "system", "content": system_prompt}]
-        for msg in messages:
-            formatted_messages.append({"role": msg["role"], "content": msg["content"]})
-
-        stream = await groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=formatted_messages,
-            temperature=0.7,
-            max_tokens=2048,
-            stream=True
-        )
-        async for chunk in stream:
-            content = chunk.choices[0].delta.content
-            if content:
-                yield content
-    except Exception as e:
-        print(f"[ERROR]: Groq Link Failure: {str(e)}")
-        yield None
-
 async def handle_openai_response(messages: List[dict], response_mode: str = "shadow"):
     """Handles generating a streaming response using OpenAI."""
     try:
@@ -208,7 +187,7 @@ async def handle_openai_response(messages: List[dict], response_mode: str = "sha
             formatted_messages.append({"role": msg["role"], "content": msg["content"]})
 
         stream = await client.chat.completions.create(
-            model="gpt-4o",
+            model="deepseek-v4-pro",
             messages=formatted_messages,
             temperature=0.7,
             max_tokens=2048,
@@ -251,12 +230,11 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
         context_str = '\n'.join([f'[ARCHIVE_VECTOR]: {c}' for c in neural_archive_data])
         messages[-1]['content'] = f'[INTEL_FROM_NEURAL_ARCHIVE]:\n{context_str}\n\nOPERATIVE_QUERY: {messages[-1]["content"]}'
     
-    groq_key = getattr(settings, "GROQ_API_KEY", None) and settings.GROQ_API_KEY.strip() != ""
     gemini_key = getattr(settings, "GEMINI_API_KEY", None) and settings.GEMINI_API_KEY.strip() != ""
     openai_key = getattr(settings, "OPENAI_API_KEY", None) and settings.OPENAI_API_KEY.strip() != ""
     
     # Search Optimization: Synchronous-like feel
-    if is_search_request and (groq_key or gemini_key):
+    if is_search_request and (gemini_key or openai_key):
         search_query = last_msg_content
         generic_words = ["this subject", "this topic", "this", "on this", "matrix scan", "web scan", "scan this"]
         is_generic_query = any(word in last_msg_lower for word in generic_words) or last_msg_lower.strip() in ["scan", "web_scan", "web-scan", "search"]
@@ -274,8 +252,8 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
         messages[-1]["content"] = f"Acknowledge materializing: {last_msg_content}"
         
         llm_response = ""
-        if groq_key:
-            async for chunk in handle_groq_response(messages, response_mode=response_mode): llm_response += chunk
+        if openai_key:
+            async for chunk in handle_openai_response(messages, response_mode=response_mode): llm_response += chunk
         elif gemini_key:
             async for chunk in handle_gemini_response(messages, response_mode=response_mode): llm_response += chunk
         
@@ -295,17 +273,7 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
     model_override = preferred_model.lower() if preferred_model else "auto"
     full_response = ""
 
-    if model_override == "groq" and groq_key:
-        async for chunk in handle_groq_response(messages, response_mode=response_mode):
-            if chunk:
-                full_response += chunk
-                yield chunk
-        if user_id and full_response:
-            original_query = extract_original_query(last_msg_content)
-            asyncio.create_task(MemoryService.add_memory(user_id, original_query))
-            asyncio.create_task(MemoryService.add_memory(user_id, full_response))
-        return
-    elif model_override == "openai" and openai_key:
+    if model_override == "openai" and openai_key:
         async for chunk in handle_openai_response(messages, response_mode=response_mode):
             if chunk:
                 full_response += chunk
@@ -333,18 +301,6 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
             yield chunk
     else:
         # Multi-Link Parallel Provider optimization
-        if groq_key:
-            async for chunk in handle_groq_response(messages, response_mode=response_mode):
-                if chunk:
-                    full_response += chunk
-                    yield chunk
-            if full_response:
-                if user_id:
-                    original_query = extract_original_query(last_msg_content)
-                    asyncio.create_task(MemoryService.add_memory(user_id, original_query))
-                    asyncio.create_task(MemoryService.add_memory(user_id, full_response))
-                return
-
         if openai_key:
             async for chunk in handle_openai_response(messages, response_mode=response_mode):
                 if chunk:

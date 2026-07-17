@@ -33,26 +33,6 @@ async def health_check():
     else:
         print(f"[DB]: WARNING. Database file '{db_path}' not found. It will be created on start.")
 
-    # 2. API Check (Groq)
-    groq_api_key = os.getenv('GROQ_API_KEY')
-    if groq_api_key:
-        try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    'https://api.groq.com/openai/v1/chat/completions',
-                    headers={'Authorization': f'Bearer {groq_api_key}'},
-                    json={'model': 'llama-3.1-8b-instant', 'messages': [{'role': 'user', 'content': 'hi'}], 'max_tokens': 5},
-                    timeout=10.0
-                )
-                if resp.status_code == 200:
-                    print(f"[GROQ]: SUCCESS. API key is valid.")
-                else:
-                    print(f"[GROQ]: ERROR. Status {resp.status_code}: {resp.text}")
-        except Exception as e:
-            print(f"[GROQ]: ERROR. {e}")
-    else:
-        print("[GROQ]: ERROR. GROQ_API_KEY not found in .env")
-
     # 3. Environment Check
     required = ['fastapi', 'uvicorn', 'sqlalchemy', 'aiosqlite', 'openai', 'python-dotenv', 'pydantic', 'mcp', 'google-generativeai']
     try:

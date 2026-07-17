@@ -11,11 +11,18 @@ else:
     load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
+if DATABASE_URL:
+    # Convert standard postgres/postgresql URL to use asyncpg driver if not already specified
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif DATABASE_URL.startswith("postgresql://"):
+        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+else:
     if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
         DATABASE_URL = "sqlite+aiosqlite:////tmp/shadow_ai.db"
     else:
         DATABASE_URL = "sqlite+aiosqlite:///./shadow_ai.db"
+
 
 # Automatically create the parent directory for SQLite databases if it doesn't exist
 if DATABASE_URL.startswith("sqlite"):
@@ -34,10 +41,30 @@ if DATABASE_URL.startswith("sqlite"):
         except Exception as e:
             print(f"Warning: Could not create database directory {db_dir}: {e}")
 
-engine = create_async_engine(DATABASE_URL, echo=True)
+# Append query param to disable prepared statements on PgBouncer
+if DATABASE_URL.startswith("postgresql"):
+    if "prepared_statement_cache_size" not in DATABASE_URL:
+        if "?" in DATABASE_URL:
+            DATABASE_URL += "&prepared_statement_cache_size=0"
+        else:
+            DATABASE_URL += "?prepared_statement_cache_size=0"
+
+engine_kwargs = {"echo": True}
+if DATABASE_URL.startswith("postgresql"):
+    import ssl
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    engine_kwargs["connect_args"] = {
+        "ssl": ssl_context,
+        "statement_cache_size": 0
+    }
+
+engine = create_async_engine(DATABASE_URL, **engine_kwargs)
 AsyncSessionLocal = async_sessionmaker(
     engine, expire_on_commit=False, class_=AsyncSession
 )
+
 
 Base = declarative_base()
 

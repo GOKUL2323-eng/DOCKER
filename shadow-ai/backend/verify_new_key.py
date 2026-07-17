@@ -6,13 +6,16 @@ from dotenv import load_dotenv
 load_dotenv(r"c:\Users\gokul\OneDrive\Pictures\Attachments\Documents\GK_workspace\shadow-ai\backend\.env")
 
 def verify_key():
-    api_key = "sk-x9or6i27WCJ1XhDuRezTiMeLeHXtU0OliDboXUdxLJx3Dd68"
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        print("Error: OPENAI_API_KEY not found in environment.")
+        return False
     print(f"Testing key: {api_key[:10]}...")
     
-    client = OpenAI(api_key=api_key)
+    client = OpenAI(api_key=api_key, base_url="https://api.ai.cc/v1")
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="deepseek-v4-pro",
             messages=[{"role": "user", "content": "Say 'Neural link established' if you can read this."}],
             max_tokens=20
         )

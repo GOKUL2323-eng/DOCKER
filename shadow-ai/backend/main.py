@@ -39,9 +39,38 @@ if os.path.exists(frontend_path):
 
 from fastapi.responses import RedirectResponse
 
+from fastapi import Depends
+from services.db import get_db
+from sqlalchemy import text
+
+@app.get("/api/db-check")
+async def db_check(db = Depends(get_db)):
+    try:
+        # Get count of users
+        res_users = await db.execute(text("SELECT COUNT(*) FROM users"))
+        users_count = res_users.scalar()
+        
+        # Get count of sessions
+        res_sessions = await db.execute(text("SELECT COUNT(*) FROM chat_sessions"))
+        sessions_count = res_sessions.scalar()
+        
+        return {
+            "status": "connected",
+            "stats": {
+                "users": users_count,
+                "chat_sessions": sessions_count
+            }
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
 @app.get("/")
 async def root():
     return RedirectResponse(url="/ui")
+
 
 @app.get("/ui")
 async def get_ui():

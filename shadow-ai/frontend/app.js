@@ -251,7 +251,6 @@ const views = {
                                         <select id="modelSelect" onchange="changeModel(this.value)" class="bg-cyber-dark text-cyber-blue border border-white/10 text-[9px] uppercase tracking-widest font-black focus:outline-none cursor-pointer p-0.5 rounded">
                                             <option value="auto" ${window.state.preferredModel === 'auto' || !window.state.preferredModel ? 'selected' : ''}>AUTO (FALLBACK)</option>
                                             <option value="openai" ${window.state.preferredModel === 'openai' ? 'selected' : ''}>GPT-4o (OPENAI)</option>
-                                            <option value="groq" ${window.state.preferredModel === 'groq' ? 'selected' : ''}>LLAMA-3.3 (GROQ)</option>
                                             <option value="gemini" ${window.state.preferredModel === 'gemini' ? 'selected' : ''}>GEMINI-1.5 (PRO)</option>
                                         </select>
                                     </div>
