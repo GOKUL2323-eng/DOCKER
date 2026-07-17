@@ -51,15 +51,37 @@ import asyncio
 @router.get("/debug-env")
 async def debug_env():
     import os
+    import httpx
     from pathlib import Path
     env_path = Path(__file__).resolve().parent.parent / ".env"
     exists = env_path.exists()
     openai_key = os.getenv("OPENAI_API_KEY", "")
+    
+    test_result = "not run"
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            headers = {
+                "Authorization": f"Bearer {openai_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": "deepseek-v4-pro",
+                "messages": [{"role": "user", "content": "hi"}],
+                "max_tokens": 10
+            }
+            res = await client.post("https://api.ai.cc/v1/chat/completions", json=payload, headers=headers)
+            test_result = {
+                "status_code": res.status_code,
+                "content": res.text[:200]
+            }
+    except Exception as e:
+        test_result = f"Error: {e}"
+        
     return {
         "env_exists": exists,
         "env_size": env_path.stat().st_size if exists else 0,
-        "env_path": str(env_path),
         "openai_key_preview": openai_key[:10] if openai_key else "None",
+        "test_api_result": test_result,
         "vercel_env": os.getenv("VERCEL_ENV", "None"),
     }
 
