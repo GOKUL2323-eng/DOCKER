@@ -464,8 +464,18 @@ body.theme-chatgpt-light .session-action-btn:hover {
 
 .message-outer-container {
     max-width: 768px;
-    margin: 0 auto 24px auto;
     width: 100%;
+    margin-bottom: 24px;
+}
+
+.message-outer-container[data-role="assistant"] {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+.message-outer-container[data-role="user"] {
+    margin-left: auto;
+    margin-right: 0;
 }
 
 .cyber-panel, .cyber-panel-red {

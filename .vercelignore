@@ -1,5 +1,4 @@
 # Exclude local environment files and databases from Vercel uploads
-shadow-ai/backend/.env
 shadow-ai/backend/shadow_ai.db
 shadow-ai/.venv
 shadow-ai/node_modules
