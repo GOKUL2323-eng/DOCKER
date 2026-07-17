@@ -46,20 +46,16 @@ if DATABASE_URL.startswith("sqlite"):
         except Exception as e:
             print(f"Warning: Could not create database directory {db_dir}: {e}")
 
-# Append query param to disable prepared statements on PgBouncer
-if DATABASE_URL.startswith("postgresql"):
-    if "prepared_statement_cache_size" not in DATABASE_URL:
-        if "?" in DATABASE_URL:
-            DATABASE_URL += "&prepared_statement_cache_size=0"
-        else:
-            DATABASE_URL += "?prepared_statement_cache_size=0"
-
+# Driver-specific connection configuration
 engine_kwargs = {"echo": False}
 if DATABASE_URL.startswith("postgresql+psycopg"):
-    # psycopg3: pass sslmode via URL query param — no connect_args needed
+    # psycopg3: sslmode as URL param, no prepared_statement_cache_size (that's asyncpg-only)
     if "sslmode" not in DATABASE_URL:
         DATABASE_URL += ("&" if "?" in DATABASE_URL else "?") + "sslmode=require"
 elif DATABASE_URL.startswith("postgresql+asyncpg"):
+    # asyncpg: prepared_statement_cache_size=0 needed for PgBouncer, ssl as connect_arg
+    if "prepared_statement_cache_size" not in DATABASE_URL:
+        DATABASE_URL += ("&" if "?" in DATABASE_URL else "?") + "prepared_statement_cache_size=0"
     engine_kwargs["connect_args"] = {
         "ssl": "require",
         "statement_cache_size": 0,
