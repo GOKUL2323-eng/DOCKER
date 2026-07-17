@@ -81,34 +81,54 @@ For every incoming request, you MUST process the prompt through the following se
 """
 
 async def web_search(query: str):
-    """Search the digital matrix using RapidAPI."""
-    if not settings.RAPID_API_KEY:
-        return f"Matrix search placeholder for '{query}'. (Missing RAPID_API_KEY)"
+    """Search the digital matrix using RapidAPI with a resilient free DuckDuckGo fallback."""
+    import re
     
-    url = "https://google-search72.p.rapidapi.com/search"
-    querystring = {"q": query, "num": "5", "lr": "en"}
-    headers = {
-        "x-rapidapi-key": settings.RAPID_API_KEY,
-        "x-rapidapi-host": "google-search72.p.rapidapi.com"
-    }
+    # Try RapidAPI first if key is available
+    if settings.RAPID_API_KEY and settings.RAPID_API_KEY.strip():
+        url = "https://google-search72.p.rapidapi.com/search"
+        querystring = {"q": query, "num": "5", "lr": "en"}
+        headers = {
+            "x-rapidapi-key": settings.RAPID_API_KEY,
+            "x-rapidapi-host": "google-search72.p.rapidapi.com"
+        }
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, headers=headers, params=querystring)
+                if response.status_code == 200:
+                    data = response.json()
+                    results = data.get("items", [])
+                    if results:
+                        summary = f"Synthesized INTELLIGENCE_DATA for '{query}':\n"
+                        for i, item in enumerate(results[:5]):
+                            summary += f"[Vector {i+1}]: {item.get('title')} -> {item.get('snippet')}\n"
+                        return summary
+        except Exception as e:
+            print(f"[RECOVERY]: RapidAPI search failed: {e}. Shifting to Fallback DDG search...")
 
+    # Fallback Vector: DuckDuckGo HTML parser (100% Free, no keys required)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=headers, params=querystring)
-            if response.status_code == 200:
-                data = response.json()
-                results = data.get("items", [])
-                if not results:
-                    return f"The matrix returned zero data points for '{query}'."
-                
-                summary = f"Synthesized INTELLIGENCE_DATA for '{query}':\n"
-                for i, item in enumerate(results[:5]):
-                    summary += f"[Vector {i+1}]: {item.get('title')} -> {item.get('snippet')}\n"
-                return summary
-            else:
-                return f"SYSTEM_FAILURE: Uplink status {response.status_code}."
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            res = await client.get(f"https://html.duckduckgo.com/html/?q={query}", headers=headers)
+            if res.status_code == 200:
+                blocks = re.findall(r'<div class="[^"]*result__body[^"]*">([\s\S]*?)</div>\s*</div>\s*</div>', res.text)
+                if blocks:
+                    summary = f"Synthesized INTELLIGENCE_DATA for '{query}':\n"
+                    for i, block in enumerate(blocks[:5]):
+                        title_match = re.search(r'<a[^>]*class="[^"]*result__a[^"]*"[^>]*>([\s\S]*?)</a>', block)
+                        snippet_match = re.search(r'<a[^>]*class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)</a>', block)
+                        if title_match and snippet_match:
+                            title = re.sub(r'<[^>]+>', "", title_match.group(1)).strip()
+                            snippet = re.sub(r'<[^>]+>', "", snippet_match.group(1)).strip()
+                            summary += f"[Vector {i+1}]: {title} -> {snippet}\n"
+                    return summary
     except Exception as e:
-        return f"DIAGNOSTIC_ERROR: Neural search failure: {str(e)}"
+        print(f"[ERROR]: Fallback DDG search failed: {e}")
+        
+    return f"The matrix was unable to scan data points for '{query}' due to uplink blocks."
 
 async def handle_simulation_mode(messages: List[dict]):
     """Provides futuristic simulated responses."""
