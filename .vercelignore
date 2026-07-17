@@ -6,3 +6,5 @@ shadow-ai/node_modules
 shadow-ai/target
 .git
 .vercel
+shadow-ai/backend/qdrant_db
+shadow-ai/qdrant_db

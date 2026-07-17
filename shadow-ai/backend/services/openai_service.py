@@ -44,6 +44,15 @@ CORE OPERATIONAL PARAMETERS:
    Hindi Greeting Vector: "नमस्ते बॉस, मैं आज आपकी कैसे सहायता कर सकता हूँ?"
 8. TEMPORAL_ALIGNMENT: The current date and time is **{current_time_str}** (current year is {current_year}). Keep this absolute temporal reference context in mind for any calculations, calendar references, or current events. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
 
+CHAT LOGIC & REASONING PIPELINE:
+For every incoming request, you MUST process the prompt through the following sequence of reasoning:
+1. Understand Intent: Identify what the user wants to accomplish (e.g., search, image, chat).
+2. Use Context: Integrate relevant spatial/temporal data, conversation records, and memory.
+3. Reason About the Request: Determine the optimal structure and style to formulate the reply.
+4. Generate the Best Response: Produce response aligning with your designated persona.
+5. Apply Safety & Accuracy Checks: Verify that names, configurations, dates, and instructions comply with system directives.
+6. Final Reply: Present the finalized output directly without showing these internal steps.
+
 Shadow Strike Protocol: ACTIVE. Diagnostic: NOMINAL.
 
 You have access to:
@@ -63,6 +72,15 @@ def get_direct_system_prompt() -> str:
     return f"""
 You are a helpful, highly capable, and direct professional AI assistant. Provide clear, concise, accurate, and professional answers. Do not use sci-fi, ninja, or tactical persona overlays (such as calling the user "boss" or referring to "protocols", "vectors", "matrix", etc.). Speak naturally, clearly, and directly.
 TEMPORAL_CONTEXT: The current date and time is **{current_time_str}** (current year is {current_year}). Maintain this temporal reference context in all answers. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
+
+CHAT LOGIC & REASONING PIPELINE:
+For every incoming request, you MUST process the prompt through the following sequence of reasoning:
+1. Understand Intent: Identify what the user wants to accomplish (e.g., search, image, chat).
+2. Use Context: Integrate relevant spatial/temporal data, conversation records, and memory.
+3. Reason About the Request: Determine the optimal structure and style to formulate the reply.
+4. Generate the Best Response: Produce high-fidelity content matching your persona.
+5. Apply Safety & Accuracy Checks: Verify that names, configurations, dates, and instructions comply with system directives.
+6. Final Reply: Present the finalized output directly without showing these internal steps.
 """
 
 async def web_search(query: str):
@@ -207,7 +225,17 @@ def extract_original_query(msg_content: str) -> str:
     return msg_content.strip()
 
 async def generate_chat_response(messages: List[dict] | str, image_data: Optional[str] = None, user_id: Optional[str] = None, response_mode: Optional[str] = "direct", preferred_model: Optional[str] = "auto"):
-    """Primary chat synthesis engine with streaming support."""
+    """
+    Primary chat synthesis engine with streaming support.
+    
+    CHAT LOGIC PIPELINE:
+    1. Understand Intent -> Identify user intent (image, search, text).
+    2. Use Context -> Retrieve neural memory archives and session history.
+    3. Reason About the Request -> Apply system preferences and model routing.
+    4. Generate the Best Response -> Execute API calls to the chosen model.
+    5. Apply Safety & Accuracy Checks -> Handle errors and format outputs.
+    6. Final Reply -> Stream the resulting reply back to the user.
+    """
     import asyncio
     
     if isinstance(messages, str):
@@ -215,15 +243,14 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
     
     last_msg_content = messages[-1]["content"]
     
-    # Check for Simulation/Command triggers first
+    # CHAT LOGIC - STEP 1: Understand Intent
     last_msg_lower = last_msg_content.lower()
     is_image_request = any(word in last_msg_lower for word in ["image", "generate", "draw", "visualize", "create a picture", "materialize", "render", "show a picture", "paint"])
     is_search_request = any(word in last_msg_lower for word in ["search", "find", "scan", "web_scan", "web-scan", "google"])
 
-    # Protocol Beta: Neural Archive Retrieval (Fast Limit)
+    # CHAT LOGIC - STEP 2: Use Context
     neural_archive_data = []
     if user_id:
-        # Optimization: Limit keyword extraction to speed up memory retrieval
         neural_archive_data = await MemoryService.get_relevant_context(user_id, last_msg_content, limit=2)
     
     if neural_archive_data:
@@ -233,7 +260,6 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
     gemini_key = getattr(settings, "GEMINI_API_KEY", None) and settings.GEMINI_API_KEY.strip() != ""
     openai_key = getattr(settings, "OPENAI_API_KEY", None) and settings.OPENAI_API_KEY.strip() != ""
     
-    # Search Optimization: Synchronous-like feel
     if is_search_request and (gemini_key or openai_key):
         search_query = last_msg_content
         generic_words = ["this subject", "this topic", "this", "on this", "matrix scan", "web scan", "scan this"]
