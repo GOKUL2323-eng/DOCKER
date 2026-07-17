@@ -20,4 +20,5 @@ google-generativeai
 qdrant-client
 deep-translator
 langdetect
-asyncpg
+psycopg
+psycopg[binary]

@@ -14,9 +14,9 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
     if DATABASE_URL and (DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://")):
         if DATABASE_URL.startswith("postgres://"):
-            DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+            DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
         elif DATABASE_URL.startswith("postgresql://"):
-            DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+            DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
     else:
         DATABASE_URL = "sqlite+aiosqlite:////tmp/shadow_ai.db"
 else:
@@ -55,10 +55,14 @@ if DATABASE_URL.startswith("postgresql"):
             DATABASE_URL += "?prepared_statement_cache_size=0"
 
 engine_kwargs = {"echo": False}
-if DATABASE_URL.startswith("postgresql"):
+if DATABASE_URL.startswith("postgresql+psycopg"):
+    # psycopg3: pass sslmode via URL query param — no connect_args needed
+    if "sslmode" not in DATABASE_URL:
+        DATABASE_URL += ("&" if "?" in DATABASE_URL else "?") + "sslmode=require"
+elif DATABASE_URL.startswith("postgresql+asyncpg"):
     engine_kwargs["connect_args"] = {
         "ssl": "require",
-        "statement_cache_size": 0,  # Required for Supabase PgBouncer Transaction Pooler
+        "statement_cache_size": 0,
     }
 
 engine = create_async_engine(DATABASE_URL, **engine_kwargs)
