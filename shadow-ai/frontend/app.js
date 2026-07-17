@@ -469,7 +469,7 @@ function initNeuralMatrix() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
         ctx.fillRect(0, 0, width, height);
 
-        ctx.fillStyle = '#00ff9d';
+        ctx.fillStyle = '#39ff14';
         ctx.font = `bold ${fontSize}px Rajdhani`;
 
         for (let i = 0; i < drops.length; i++) {
