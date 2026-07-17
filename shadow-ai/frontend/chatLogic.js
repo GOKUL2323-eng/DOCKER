@@ -253,9 +253,9 @@ function appendMessage(role, content, isStreaming = false) {
     const outerDiv = document.createElement('div');
     outerDiv.className = 'message-outer-container';
     outerDiv.dataset.role = role;
+    outerDiv.dataset.rawContent = content;
     if (isStreaming) {
         outerDiv.dataset.streaming = 'true';
-        outerDiv.dataset.rawContent = content;
     }
 
     const panelClass = isUser ? 'cyber-panel-red' : 'cyber-panel';
@@ -270,9 +270,19 @@ function appendMessage(role, content, isStreaming = false) {
                     ${avatarContent}
                 </div>
                 <div class="message-content-container">
-                    <div class="message-header">
+                    <div class="message-header flex items-center justify-between">
                         <span class="message-sender">${senderLabel}</span>
-                        <span class="message-timestamp">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}</span>
+                        <div class="flex items-center gap-2">
+                            ${!isUser ? `
+                            <button onclick="speakMessageBubble(this)" class="speak-msg-btn text-cyber-textSecondary hover:text-cyber-blue transition-colors p-1" title="Speak Response">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                </svg>
+                            </button>
+                            ` : ''}
+                            <span class="message-timestamp">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}</span>
+                        </div>
                     </div>
                     <div class="message-content">
                         ${state.selectedImageData && isUser ? `<img src="data:image/jpeg;base64,${state.selectedImageData}" class="max-w-sm mb-4 rounded border border-cyber-red/30 shadow-2xl" />` : ''}
@@ -467,6 +477,48 @@ function toggleResponseMode() {
     }
 }
 
+function stopActiveSpeech() {
+    if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+    }
+    if (state.currentAudio) {
+        state.currentAudio.pause();
+        state.currentAudio = null;
+    }
+    document.querySelectorAll('.speak-msg-btn').forEach(btn => {
+        btn.classList.remove('speaking');
+        btn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+        `;
+    });
+}
+
+function speakMessageBubble(btn) {
+    const outerDiv = btn.closest('.message-outer-container');
+    if (!outerDiv) return;
+    const rawContent = outerDiv.dataset.rawContent || '';
+    if (!rawContent) return;
+
+    if (btn.classList.contains('speaking')) {
+        stopActiveSpeech();
+        return;
+    }
+
+    stopActiveSpeech();
+
+    btn.classList.add('speaking');
+    btn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+        </svg>
+    `;
+
+    speakResponse(rawContent, state.preferredLang);
+}
+
 async function speakResponse(text, lang) {
     const cleanText = text.replace(/[*#`_\[\]()]/g, '').replace(/!\[.*?\]\(.*?\)/g, '');
     if (!cleanText) return;
@@ -495,6 +547,10 @@ async function speakResponse(text, lang) {
                 if (window.speechSynthesis) window.speechSynthesis.cancel();
                 neuralStarted = true;
                 const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+                state.currentAudio = audio;
+                audio.onended = () => {
+                    stopActiveSpeech();
+                };
                 audio.play();
                 return;
             }
@@ -509,6 +565,13 @@ function speakFallback(cleanText, lang) {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = lang || 'en';
+    
+    utterance.onend = () => {
+        stopActiveSpeech();
+    };
+    utterance.onerror = () => {
+        stopActiveSpeech();
+    };
     
     const voices = window.speechSynthesis.getVoices();
     const targetLangPrefix = (lang || 'en').toLowerCase().split('-')[0];
