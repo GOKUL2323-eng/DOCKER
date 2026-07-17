@@ -262,9 +262,6 @@ const views = {
                                     <div class="text-[9px] text-cyber-textSecondary flex items-center gap-2 tracking-widest uppercase hidden sm:flex">
                                         PROTOCOL: <button onclick="showLanguageSelector()" id="activeLang" class="text-cyber-blue font-black hover:underline underline-offset-4 decoration-cyber-blue/30">${window.state.preferredLang || 'EN-US'}</button>
                                     </div>
-                                    <button onclick="toggleVoice()" id="voiceToggle" class="text-[9px] uppercase tracking-widest text-cyber-textSecondary hover:text-cyber-blue transition-colors font-black">
-                                        VOICE_FEED: <span id="voiceStatus" class="text-cyber-red">${window.state.voiceEnabled ? 'ON' : 'OFF'}</span>
-                                    </button>
                                     <button onclick="toggleCodeWorkspace()" id="workspaceToggle" class="text-[9px] uppercase tracking-widest text-cyber-textSecondary hover:text-cyber-blue transition-colors font-black">
                                         WORKSPACE: <span id="workspaceStatus" class="text-cyber-red">OFF</span>
                                     </button>
