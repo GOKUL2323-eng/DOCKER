@@ -229,7 +229,7 @@ const views = {
                         <div class="max-w-5xl mx-auto">
                             <div class="relative group">
                                 <!-- Payload Preview -->
-                                <div id="imagePreviewContainer" class="absolute bottom-full left-0 mb-4 hidden animate-float">
+                                <div id="imagePreviewContainer" class="absolute bottom-full left-0 mb-4 hidden animate-float" style="display: none;">
                                     <div class="relative group">
                                         <img id="imagePreview" src="" class="h-24 rounded border border-cyber-blue/30 shadow-2xl">
                                         <button onclick="clearImage()" class="absolute -top-2 -right-2 w-6 h-6 bg-cyber-red text-white flex items-center justify-center text-[11px] rounded transition-transform hover:scale-110">✕</button>

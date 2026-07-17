@@ -621,7 +621,7 @@ function handleImageSelect(event) {
             const container = document.getElementById('imagePreviewContainer');
             if (preview && container) {
                 preview.src = e.target.result;
-                container.classList.remove('hidden');
+                container.style.display = 'block';
             }
         };
         reader.readAsDataURL(file);
@@ -639,7 +639,7 @@ function handleImageSelect(event) {
             if (preview && container) {
                 const svgIcon = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="%2310a37f" stroke-width="1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
                 preview.src = svgIcon;
-                container.classList.remove('hidden');
+                container.style.display = 'block';
             }
         };
         reader.readAsText(file);
@@ -653,7 +653,7 @@ function clearImage() {
     const container = document.getElementById('imagePreviewContainer');
     const input = document.getElementById('imageInput');
     if (preview) preview.src = '';
-    if (container) container.classList.add('hidden');
+    if (container) container.style.display = 'none';
     if (input) input.value = '';
 }
 
