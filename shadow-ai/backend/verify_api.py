@@ -7,7 +7,7 @@ import io
 if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-url = "http://localhost:8000/api/chat/message"
+url = "https://docker-rust.vercel.app/api/chat/message"
 payload = {"message": "வணக்கம்"}
 headers = {"Content-Type": "application/json"}
 
