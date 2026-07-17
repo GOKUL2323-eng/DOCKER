@@ -120,3 +120,75 @@ function togglePasswordVisibility() {
         toggleBtn.innerText = 'Show';
     }
 }
+
+async function initGoogleSignIn() {
+    const container = document.getElementById('googleBtnContainer');
+    if (!container) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/auth/config`);
+        if (!res.ok) throw new Error("Failed to load config");
+        const config = await res.json();
+        
+        if (!config.google_client_id) {
+            container.innerHTML = `<p class="text-[10px] text-cyber-red/50 uppercase tracking-widest font-black text-center">Google Client ID Not Configured</p>`;
+            return;
+        }
+
+        if (window.google && window.google.accounts) {
+            google.accounts.id.initialize({
+                client_id: config.google_client_id,
+                callback: handleGoogleCredentialResponse
+            });
+
+            google.accounts.id.renderButton(
+                container,
+                { 
+                    theme: "dark", 
+                    size: "large", 
+                    text: "continue_with",
+                    shape: "rectangular",
+                    width: container.offsetWidth || 340
+                }
+            );
+        } else {
+            setTimeout(initGoogleSignIn, 500);
+        }
+    } catch (err) {
+        console.error("Error initializing Google sign-in:", err);
+    }
+}
+
+async function handleGoogleCredentialResponse(response) {
+    const errorEl = document.getElementById('authError');
+    if (errorEl) errorEl.classList.add('hidden');
+
+    try {
+        const res = await fetch(`${API_BASE}/auth/google`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ credential: response.credential })
+        });
+
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.detail || "Google authentication failed");
+        }
+
+        const data = await res.json();
+        state.token = data.access_token;
+        const payloadBase64 = data.access_token.split('.')[1];
+        const payload = JSON.parse(atob(payloadBase64));
+        const username = payload.sub || "GoogleUser";
+
+        state.user = username;
+        localStorage.setItem('shadow_token', data.access_token);
+        localStorage.setItem('shadow_user', username);
+        navigate('chat');
+    } catch (err) {
+        if (errorEl) {
+            errorEl.innerText = 'SYSTEM ERROR: ' + err.message;
+            errorEl.classList.remove('hidden');
+        }
+    }
+}

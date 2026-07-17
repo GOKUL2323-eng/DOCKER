@@ -8,6 +8,9 @@ from core.security import verify_password, get_password_hash, create_access_toke
 from models.user import UserCreate, UserResponse, Token
 from models.orm import User
 from services.db import get_db
+import httpx
+import os
+from pydantic import BaseModel
 
 router = APIRouter()
 
@@ -102,4 +105,83 @@ async def social_callback(provider: str, code: str, db: AsyncSession = Depends(g
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/config")
+async def get_auth_config():
+    return {
+        "google_client_id": settings.GOOGLE_CLIENT_ID
+    }
+
+class GoogleLoginRequest(BaseModel):
+    credential: str
+
+@router.post("/google", response_model=Token)
+async def google_login(request: GoogleLoginRequest, db: AsyncSession = Depends(get_db)):
+    token = request.credential
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.get(
+                f"https://oauth2.googleapis.com/tokeninfo?id_token={token}",
+                timeout=10.0
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Google API network error: {str(e)}"
+            )
+            
+    if resp.status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Google credential token"
+        )
+        
+    idinfo = resp.json()
+    
+    # Verify audience if client ID is set
+    client_id = settings.GOOGLE_CLIENT_ID
+    if client_id and idinfo.get("aud") != client_id:
+         raise HTTPException(
+             status_code=status.HTTP_401_UNAUTHORIZED,
+             detail="Google credential token client_id mismatch"
+         )
+         
+    email = idinfo.get("email")
+    name = idinfo.get("name") or idinfo.get("given_name") or "Google User"
+    sub = idinfo.get("sub")
+    
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google account does not have email address"
+        )
+        
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalars().first()
+    
+    if not user:
+        base_username = email.split("@")[0]
+        username = base_username
+        counter = 1
+        while True:
+            u_check = await db.execute(select(User).where(User.username == username))
+            if not u_check.scalars().first():
+                break
+            username = f"{base_username}_{counter}"
+            counter += 1
+            
+        user = User(
+            username=username,
+            email=email,
+            hashed_password=get_password_hash(f"google-oauth-dummy-pw-{sub}")
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
     return {"access_token": access_token, "token_type": "bearer"}

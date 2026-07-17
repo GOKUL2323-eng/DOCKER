@@ -130,17 +130,9 @@ const views = {
                     
                     <div id="authError" class="mt-6 p-4 border border-cyber-red/30 bg-cyber-red/5 text-cyber-red text-[11px] hidden uppercase tracking-wider font-bold"></div>
                     
-                    <!-- <div class="social-auth-container">
-                        <button onclick="handleSocialAuth('google')" class="social-btn google" title="UPLINK via GOOGLE">
-                            <i class="fab fa-google"></i>
-                        </button>
-                        <button onclick="handleSocialAuth('facebook')" class="social-btn facebook" title="UPLINK via FACEBOOK">
-                            <i class="fab fa-facebook-f"></i>
-                        </button>
-                        <button onclick="handleSocialAuth('github')" class="social-btn github" title="UPLINK via GITHUB">
-                            <i class="fab fa-github"></i>
-                        </button>
-                    </div> -->
+                    <div class="mt-6 flex flex-col items-center justify-center border-t border-white/5 pt-6">
+                        <div id="googleBtnContainer" class="w-full flex justify-center"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -235,39 +227,6 @@ const views = {
                     <!-- Control Console -->
                     <div class="absolute bottom-0 left-0 w-full p-3 md:p-10 pb-5 md:pb-10 bg-gradient-to-t from-cyber-black via-cyber-black/90 to-transparent z-30">
                         <div class="max-w-5xl mx-auto">
-                            <!-- Status Bar -->
-                            <div class="flex flex-wrap gap-2 md:gap-4 justify-between items-center mb-3 md:mb-4 px-2 bg-black/60 p-1.5 md:p-2 border border-white/5 rounded backdrop-blur-md">
-                                <div class="flex gap-4">
-                                    <div class="text-[9px] text-cyber-textSecondary flex items-center gap-2 tracking-widest">
-                                        <span class="w-1.5 h-1.5 bg-cyber-red rounded-full animate-pulse"></span>
-                                        SYSTEM_STABLE
-                                    </div>
-                                    <div class="text-[9px] text-cyber-textSecondary flex items-center gap-2 tracking-widest hidden md:flex">
-                                        <span class="w-1.5 h-1.5 bg-white/20 rounded-full"></span>
-                                        SEC_LEVEL_IV
-                                    </div>
-                                    <div class="text-[9px] text-cyber-textSecondary flex items-center gap-2 tracking-widest">
-                                        CORE_LINK:
-                                        <select id="modelSelect" onchange="changeModel(this.value)" class="bg-cyber-dark text-cyber-blue border border-white/10 text-[9px] uppercase tracking-widest font-black focus:outline-none cursor-pointer p-0.5 rounded">
-                                            <option value="auto" ${window.state.preferredModel === 'auto' || !window.state.preferredModel ? 'selected' : ''}>AUTO (FALLBACK)</option>
-                                            <option value="openai" ${window.state.preferredModel === 'openai' ? 'selected' : ''}>GPT-4o (OPENAI)</option>
-                                            <option value="gemini" ${window.state.preferredModel === 'gemini' ? 'selected' : ''}>GEMINI-1.5 (PRO)</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-4">
-                                    <button onclick="toggleResponseMode()" id="responseModeToggle" class="text-[9px] uppercase tracking-widest text-cyber-textSecondary hover:text-cyber-blue transition-colors font-black">
-                                        RESPONSE: <span id="responseModeStatus" class="${window.state.responseMode === 'direct' ? 'text-cyber-blue' : 'text-cyber-red'}">${window.state.responseMode === 'direct' ? 'DIRECT' : 'SHADOW'}</span>
-                                    </button>
-                                    <div class="text-[9px] text-cyber-textSecondary flex items-center gap-2 tracking-widest uppercase hidden sm:flex">
-                                        PROTOCOL: <button onclick="showLanguageSelector()" id="activeLang" class="text-cyber-blue font-black hover:underline underline-offset-4 decoration-cyber-blue/30">${window.state.preferredLang || 'EN-US'}</button>
-                                    </div>
-                                    <button onclick="toggleCodeWorkspace()" id="workspaceToggle" class="text-[9px] uppercase tracking-widest text-cyber-textSecondary hover:text-cyber-blue transition-colors font-black">
-                                        WORKSPACE: <span id="workspaceStatus" class="text-cyber-red">OFF</span>
-                                    </button>
-                                </div>
-                            </div>
-
                             <div class="relative group">
                                 <!-- Payload Preview -->
                                 <div id="imagePreviewContainer" class="absolute bottom-full left-0 mb-4 hidden animate-float">
@@ -495,6 +454,10 @@ function navigate(viewName) {
             // Re-initialize Google Translate if needed
             if (typeof google !== 'undefined' && google.translate && google.translate.TranslateElement) {
                 new google.translate.TranslateElement({pageLanguage: 'en'}, 'google_translate_element');
+            }
+        } else if (viewName === 'auth') {
+            if (typeof initGoogleSignIn === 'function') {
+                initGoogleSignIn();
             }
         }
     }
