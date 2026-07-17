@@ -7,3 +7,6 @@ shadow-ai/target
 .vercel
 shadow-ai/backend/qdrant_db
 shadow-ai/qdrant_db
+# .env files: use Vercel encrypted environment variables instead
+shadow-ai/backend/.env
+.env

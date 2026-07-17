@@ -3,9 +3,10 @@ from pathlib import Path
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
-# Load .env relative to config.py location
+# Load .env for local development only - silently skip if not found (Vercel uses encrypted env vars)
 env_path = Path(__file__).resolve().parent.parent / ".env"
-load_dotenv(dotenv_path=env_path)
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Shadow AI"
