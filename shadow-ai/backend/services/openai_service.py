@@ -249,8 +249,9 @@ async def handle_openai_response(messages: List[dict], response_mode: str = "sha
             if content:
                 yield content
     except Exception as e:
-        print(f"[ERROR]: OpenAI Link Failure: {str(e)}")
-        yield None
+        error_msg = f"[ERROR]: OpenAI Link Failure: {str(e)}"
+        print(error_msg)
+        yield error_msg
 
 def extract_original_query(msg_content: str) -> str:
     if "OPERATIVE_QUERY:" in msg_content:
