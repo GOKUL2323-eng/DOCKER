@@ -88,6 +88,26 @@ async def get_db():
 
 async def init_db():
     import models.orm
+    from models.orm import User
+    from sqlalchemy import select
     async with engine.begin() as conn:
         # Create all tables
         await conn.run_sync(Base.metadata.create_all)
+        
+    # Seed default guest user if not present to satisfy FK constraints
+    async with AsyncSessionLocal() as session:
+        try:
+            res = await session.execute(select(User).where(User.id == "guest-user"))
+            guest = res.scalars().first()
+            if not guest:
+                guest = User(
+                    id="guest-user",
+                    username="guest_operative",
+                    email="guest@shadow.ai",
+                    hashed_password="guest-no-password"
+                )
+                session.add(guest)
+                await session.commit()
+                print("Default guest operative seeded successfully.")
+        except Exception as e:
+            print(f"Warning: Could not seed guest user: {e}")
