@@ -92,6 +92,14 @@ body.theme-cyber {
     --shadow-lg: 0 8px 32px 0 rgba(255, 0, 60, 0.15);
 }
 
+body.theme-cyber #chatContainer {
+    background-color: transparent;
+}
+body.theme-cyber .bg-cyber-black {
+    background-color: transparent;
+}
+
+
 /* Base Styles */
 * {
     box-sizing: border-box;
@@ -119,7 +127,7 @@ body {
     height: 100%;
     z-index: 0;
     background: #000;
-    opacity: 0.25;
+    opacity: 0.35;
     display: var(--matrix-display);
 }
 

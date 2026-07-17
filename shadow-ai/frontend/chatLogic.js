@@ -477,6 +477,16 @@ function toggleResponseMode() {
     }
 }
 
+function getActiveSpeakingButton() {
+    const marked = document.querySelector('.speak-msg-btn.speaking');
+    if (marked) return marked;
+    
+    const all = document.querySelectorAll('.speak-msg-btn');
+    if (all.length > 0) return all[all.length - 1];
+    
+    return null;
+}
+
 function stopActiveSpeech() {
     if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
@@ -522,6 +532,17 @@ function speakMessageBubble(btn) {
 async function speakResponse(text, lang) {
     const cleanText = text.replace(/[*#`_\[\]()]/g, '').replace(/!\[.*?\]\(.*?\)/g, '');
     if (!cleanText) return;
+
+    // Auto-highlight button if not manually triggered
+    const btn = getActiveSpeakingButton();
+    if (btn && !btn.classList.contains('speaking')) {
+        btn.classList.add('speaking');
+        btn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+            </svg>
+        `;
+    }
 
     let neuralStarted = false;
     const fallbackTimeout = setTimeout(() => {
