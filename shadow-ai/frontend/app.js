@@ -170,10 +170,19 @@ const views = {
                 </div>
 
                 <div class="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-2">
-                    <button onclick="startNewSession()" class="w-full flex items-center justify-between p-4 text-[10px] font-black border border-cyber-blue/20 text-cyber-blue hover:bg-cyber-blue/5 transition-all uppercase tracking-[3px] group">
-                        <span>NEW_DEPLOYMENT</span>
-                        <span class="group-hover:translate-x-1 transition-transform">→</span>
-                    </button>
+                    <div class="flex flex-col gap-2">
+                        <button onclick="startNewSession()" class="w-full flex items-center justify-between p-4 text-[10px] font-black border border-cyber-blue/20 text-cyber-blue hover:bg-cyber-blue/5 transition-all uppercase tracking-[3px] group">
+                            <span>NEW_DEPLOYMENT</span>
+                            <span class="group-hover:translate-x-1 transition-transform">→</span>
+                        </button>
+                        <button onclick="clearHistory()" class="w-full flex items-center justify-between p-4 text-[10px] font-black border border-cyber-red/20 text-cyber-red hover:bg-cyber-red/5 transition-all uppercase tracking-[3px] group">
+                            <span>CLEAR_HISTORY</span>
+                            <svg class="group-hover:rotate-12 transition-transform" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    </div>
                     <div id="sessionList" class="space-y-2">
                         <!-- Sessions rendered here -->
                     </div>

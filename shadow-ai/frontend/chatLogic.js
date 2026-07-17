@@ -185,6 +185,24 @@ async function deleteSession(id, event) {
     }
 }
 
+async function clearHistory() {
+    if (!confirm("Are you sure you want to terminate ALL operational thread logs? This cannot be undone.")) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/chat/sessions`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (!res.ok) throw new Error("Clear history failed");
+        
+        startNewSession();
+        fetchSessions();
+    } catch (err) {
+        console.error("Clear history failure:", err);
+        alert("Clear history block interrupted.");
+    }
+}
+
 function selectSession(id) {
     loadSession(id);
     toggleSidebarMobile(false);
@@ -253,9 +271,9 @@ function appendMessage(role, content, isStreaming = false) {
     const outerDiv = document.createElement('div');
     outerDiv.className = 'message-outer-container';
     outerDiv.dataset.role = role;
+    outerDiv.dataset.rawContent = content;
     if (isStreaming) {
         outerDiv.dataset.streaming = 'true';
-        outerDiv.dataset.rawContent = content;
     }
 
     const panelClass = isUser ? 'cyber-panel-red' : 'cyber-panel';
@@ -270,9 +288,19 @@ function appendMessage(role, content, isStreaming = false) {
                     ${avatarContent}
                 </div>
                 <div class="message-content-container">
-                    <div class="message-header">
+                    <div class="message-header flex items-center justify-between">
                         <span class="message-sender">${senderLabel}</span>
-                        <span class="message-timestamp">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}</span>
+                        <div class="flex items-center gap-2">
+                            ${!isUser ? `
+                            <button onclick="speakMessageBubble(this)" class="speak-msg-btn text-cyber-textSecondary hover:text-cyber-blue transition-colors p-1" title="Speak Response">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                </svg>
+                            </button>
+                            ` : ''}
+                            <span class="message-timestamp">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}</span>
+                        </div>
                     </div>
                     <div class="message-content">
                         ${state.selectedImageData && isUser ? `<img src="data:image/jpeg;base64,${state.selectedImageData}" class="max-w-sm mb-4 rounded border border-cyber-red/30 shadow-2xl" />` : ''}
@@ -467,6 +495,14 @@ function toggleResponseMode() {
     }
 }
 
+function speakMessageBubble(btn) {
+    const outerDiv = btn.closest('.message-outer-container');
+    if (!outerDiv) return;
+    const rawContent = outerDiv.dataset.rawContent || '';
+    if (!rawContent) return;
+    speakResponse(rawContent, state.preferredLang);
+}
+
 async function speakResponse(text, lang) {
     const cleanText = text.replace(/[*#`_\[\]()]/g, '').replace(/!\[.*?\]\(.*?\)/g, '');
     if (!cleanText) return;
@@ -537,9 +573,25 @@ function formatAIResponse(str) {
     
     const renderer = new marked.Renderer();
     
-    renderer.code = (code, lang) => {
+    renderer.code = (codeOrObj, lang) => {
+        let code = codeOrObj;
+        let codeLang = lang;
+        if (codeOrObj && typeof codeOrObj === 'object') {
+            code = codeOrObj.text || '';
+            codeLang = codeOrObj.lang || lang;
+        }
+
         const encodedCode = btoa(unescape(encodeURIComponent(code)));
-        const displayLang = lang ? lang.toUpperCase() : 'CODE';
+        const displayLang = codeLang ? codeLang.toUpperCase() : 'CODE';
+
+        let highlighted = code;
+        if (codeLang && Prism.languages[codeLang]) {
+            try {
+                highlighted = Prism.highlight(code, Prism.languages[codeLang], codeLang);
+            } catch (e) {
+                console.warn("Prism highlight error:", e);
+            }
+        }
         
         return `
             <div class="code-block-container">
@@ -549,12 +601,12 @@ function formatAIResponse(str) {
                         <button onclick="copyCodeSnippet('${encodedCode}', this)" class="code-action-btn">
                             COPY CODE
                         </button>
-                        <button onclick="loadCodeIntoWorkspace('${encodedCode}', '${lang || 'python'}')" class="code-action-btn">
+                        <button onclick="loadCodeIntoWorkspace('${encodedCode}', '${codeLang || 'python'}')" class="code-action-btn">
                             LOAD TO WORKSPACE
                         </button>
                     </div>
                 </div>
-                <pre class="p-4 overflow-x-auto text-sm"><code>${code}</code></pre>
+                <pre class="p-4 overflow-x-auto text-sm"><code class="language-${codeLang || 'none'}">${highlighted}</code></pre>
             </div>
         `;
     };

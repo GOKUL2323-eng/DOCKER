@@ -182,6 +182,25 @@ async def get_session_details(session_id: str, current_user: UserInDB = Depends(
 class SessionUpdateRequest(BaseModel):
     title: str
 
+@router.delete("/sessions")
+async def clear_all_sessions(
+    current_user: UserInDB = Depends(get_current_user), 
+    db: AsyncSession = Depends(get_db)
+):
+    user_id = current_user.id if current_user else "guest-user"
+    
+    result = await db.execute(
+        select(ChatSessionDB)
+        .where(ChatSessionDB.user_id == user_id)
+    )
+    sessions = result.scalars().all()
+    
+    for session in sessions:
+        await db.delete(session)
+        
+    await db.commit()
+    return {"status": "success", "message": "All session logs terminated"}
+
 @router.delete("/sessions/{session_id}")
 async def delete_session(
     session_id: str, 

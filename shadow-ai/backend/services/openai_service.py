@@ -75,7 +75,6 @@ For every incoming request, you MUST process the prompt through the following se
 4. Generate the Best Response: Produce high-fidelity content matching your persona.
 5. Apply Safety & Accuracy Checks: Verify that names, configurations, dates, and instructions comply with system directives.
 6. Final Reply: Present the finalized output directly without showing these internal steps.
-"""ntain this temporal reference context in all answers. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
 """
 
 async def web_search(query: str):
