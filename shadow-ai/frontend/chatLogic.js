@@ -279,14 +279,29 @@ async function handleSendMessage(event) {
     }
 }
 
+function updateVoiceBtnUI() {
+    const btn = document.getElementById('voiceToggleBtn');
+    const icon = document.getElementById('voiceIcon');
+    if (!btn) return;
+
+    if (state.voiceEnabled) {
+        btn.className = "mb-1 flex items-center justify-center h-11 w-12 rounded border border-cyber-blue/30 text-cyber-blue hover:bg-cyber-blue/5 transition-all";
+        if (icon) {
+            icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>`;
+        }
+    } else {
+        btn.className = "mb-1 flex items-center justify-center h-11 w-12 rounded border border-cyber-red/30 text-cyber-red hover:bg-cyber-red/5 transition-all";
+        if (icon) {
+            icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>`;
+        }
+    }
+}
+
 function toggleVoice() {
     state.voiceEnabled = !state.voiceEnabled;
     localStorage.setItem('shadow_voice', state.voiceEnabled);
-    const status = document.getElementById('voiceStatus');
-    if (status) {
-        status.innerText = state.voiceEnabled ? 'ON' : 'OFF';
-        status.className = state.voiceEnabled ? 'text-cyber-blue' : 'text-cyber-red';
-    }
+    updateVoiceBtnUI();
     if (!state.voiceEnabled) window.speechSynthesis.cancel();
 }
 
