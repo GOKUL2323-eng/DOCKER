@@ -542,40 +542,48 @@ async function speakResponse(text, lang) {
         `;
     }
 
-    let neuralStarted = false;
-    const fallbackTimeout = setTimeout(() => {
-        if (!neuralStarted) {
-            speakFallback(cleanText, lang);
-        }
-    }, 450);
-
     try {
+        // Cancel any active SpeechSynthesis or Audio playing
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        if (state.currentAudio) {
+            state.currentAudio.pause();
+            state.currentAudio = null;
+        }
+
+        // Fetch neural TTS audio from backend, using a 3s AbortController timeout to prevent long delays
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
         const response = await fetch(`${API_BASE}/api/chat/tts`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${state.token}`
             },
-            body: JSON.stringify({ text: cleanText, lang: lang || 'en-US' })
+            body: JSON.stringify({ text: cleanText, lang: lang || 'en-US' }),
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
 
         if (response.ok) {
             const data = await response.json();
             if (data.audioContent) {
-                clearTimeout(fallbackTimeout);
-                if (window.speechSynthesis) window.speechSynthesis.cancel();
-                neuralStarted = true;
                 const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
                 state.currentAudio = audio;
                 audio.onended = () => {
                     stopActiveSpeech();
                 };
-                audio.play();
+                await audio.play();
                 return;
             }
         }
+        
+        // If response is not ok or missing audio content, trigger local fallback
+        speakFallback(cleanText, lang);
     } catch (err) {
-        // Fallback triggers
+        console.warn("[TTS_SERVICE]: Neural synthesis vector offline. Engaging local system fallback.", err);
+        speakFallback(cleanText, lang);
     }
 }
 
@@ -689,18 +697,18 @@ function copyCodeSnippet(encodedCode, buttonEl) {
     });
 }
 
-function handleImageSelect(event) {
+async function handleImageSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
+
+    const preview = document.getElementById('imagePreview');
+    const container = document.getElementById('imagePreviewContainer');
 
     if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = e => {
             state.selectedImageData = e.target.result;
             state.selectedFileText = null;
-            
-            const preview = document.getElementById('imagePreview');
-            const container = document.getElementById('imagePreviewContainer');
             if (preview && container) {
                 preview.src = e.target.result;
                 container.style.display = 'block';
@@ -708,23 +716,57 @@ function handleImageSelect(event) {
         };
         reader.readAsDataURL(file);
     } else {
-        const reader = new FileReader();
-        reader.onload = e => {
+        // Non-image files (PDF, Docx, Spreadsheet, Text files, etc.)
+        if (preview && container) {
+            // Show loading doc icon with spinning styling
+            const loadingSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="%2339ff14" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>`;
+            preview.src = loadingSvg;
+            preview.className = "h-24 rounded border border-cyber-blue/30 shadow-2xl animate-spin";
+            container.style.display = 'block';
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch(`${API_BASE}/api/chat/parse-file`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${state.token}`
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || "PARSE_FAILED");
+            }
+
+            const data = await response.json();
+            
+            // If user cleared the attachment while loading, abort setting state
+            if (container && container.style.display === 'none') {
+                return;
+            }
+
             state.selectedFileText = {
-                name: file.name,
-                content: e.target.result
+                name: data.filename,
+                content: data.content
             };
             state.selectedImageData = null;
-            
-            const preview = document.getElementById('imagePreview');
-            const container = document.getElementById('imagePreviewContainer');
-            if (preview && container) {
-                const svgIcon = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="%2310a37f" stroke-width="1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
-                preview.src = svgIcon;
-                container.style.display = 'block';
+
+            if (preview) {
+                // Restore non-spinning class and show active green document icon
+                preview.className = "h-24 rounded border border-cyber-blue/30 shadow-2xl";
+                const docSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="%2339ff14" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
+                preview.src = docSvg;
+                preview.title = data.filename;
             }
-        };
-        reader.readAsText(file);
+        } catch (err) {
+            console.error("Payload analysis failed:", err);
+            alert("Operational Alert: File parsing failure. " + err.message);
+            clearImage();
+        }
     }
 }
 
@@ -734,7 +776,11 @@ function clearImage() {
     const preview = document.getElementById('imagePreview');
     const container = document.getElementById('imagePreviewContainer');
     const input = document.getElementById('imageInput');
-    if (preview) preview.src = '';
+    if (preview) {
+        preview.src = '';
+        preview.className = "h-24 rounded border border-cyber-blue/30 shadow-2xl";
+        preview.removeAttribute('title');
+    }
     if (container) container.style.display = 'none';
     if (input) input.value = '';
 }
@@ -755,54 +801,59 @@ function quickAction(command) {
     }
 }
 
-// Voice Recognition
+// Voice Recognition & Recording Fallback
 let recognition = null;
+let mediaRecorder = null;
+let audioChunks = [];
+let voiceInputMode = 'recognition'; // 'recognition' or 'recorder'
+
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.lang = state.getBCP47(state.preferredLang || 'en-US');
+    try {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = state.getBCP47(state.preferredLang || 'en-US');
 
-    recognition.onstart = () => {
-        state.listening = true;
-        updateMicUI();
-    };
+        recognition.onstart = () => {
+            state.listening = true;
+            voiceInputMode = 'recognition';
+            updateMicUI();
+        };
 
-    recognition.onresult = (event) => {
-        const transcript = Array.from(event.results)
-            .map(result => result[0])
-            .map(result => result.transcript)
-            .join('');
-        
-        const input = document.getElementById('chatInput');
-        if (input) {
-            input.value = transcript;
-            autoScaleTextarea(input);
-        }
-    };
-
-    recognition.onerror = (event) => {
-        console.error('Voice input error:', event.error);
-        stopListening();
-    };
-
-    recognition.onend = () => {
-        if (state.listening) {
+        recognition.onresult = (event) => {
+            const transcript = Array.from(event.results)
+                .map(result => result[0])
+                .map(result => result.transcript)
+                .join('');
+            
             const input = document.getElementById('chatInput');
-            if (input && input.value.trim()) {
-                handleSendMessage();
+            if (input) {
+                input.value = transcript;
+                autoScaleTextarea(input);
             }
-        }
-        stopListening();
-    };
+        };
+
+        recognition.onerror = (event) => {
+            console.error('Voice recognition error:', event.error);
+            stopListening();
+        };
+
+        recognition.onend = () => {
+            if (state.listening && voiceInputMode === 'recognition') {
+                const input = document.getElementById('chatInput');
+                if (input && input.value.trim()) {
+                    handleSendMessage();
+                }
+            }
+            stopListening();
+        };
+    } catch (e) {
+        console.error('Failed to initialize Web Speech Recognition:', e);
+    }
 }
 
 function toggleMicrophone() {
-    if (!recognition) {
-        alert('Speech recognition is not supported in this browser.');
-        return;
-    }
     if (state.listening) {
         stopListening();
     } else {
@@ -810,19 +861,119 @@ function toggleMicrophone() {
     }
 }
 
-function startListening() {
-    if (!recognition) return;
+async function startListening() {
+    // 1. Try browser-based Speech Recognition first if supported
+    if (recognition) {
+        try {
+            recognition.lang = state.getBCP47(state.preferredLang || 'en-US');
+            recognition.start();
+            voiceInputMode = 'recognition';
+            return;
+        } catch (e) {
+            console.warn('Native SpeechRecognition failed, falling back to MediaRecorder:', e);
+        }
+    }
+
+    // 2. Fall back to MediaRecorder recording to backend
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Voice input is not supported in this browser context (requires HTTPS or localhost).');
+        return;
+    }
+
     try {
-        recognition.lang = state.getBCP47(state.preferredLang || 'en-US');
-        recognition.start();
-    } catch (e) {
-        console.warn('Recognition active');
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunks = [];
+        mediaRecorder = new MediaRecorder(stream);
+        
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
+        };
+
+        mediaRecorder.onstart = () => {
+            state.listening = true;
+            voiceInputMode = 'recorder';
+            updateMicUI();
+            
+            const input = document.getElementById('chatInput');
+            if (input) {
+                input.placeholder = "Listening... Click mic button to stop and transcribe.";
+            }
+        };
+
+        mediaRecorder.onstop = async () => {
+            const input = document.getElementById('chatInput');
+            if (input) {
+                input.placeholder = "ENTER_COMMAND...";
+            }
+
+            // Stop all audio tracks to release microphone hardware
+            stream.getTracks().forEach(track => track.stop());
+
+            if (audioChunks.length === 0) return;
+
+            const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+            
+            if (input) {
+                input.value = "";
+                input.placeholder = "Synthesizing voice transcription...";
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('file', audioBlob, 'voice_feed.webm');
+
+                const response = await fetch(`${API_BASE}/api/chat/stt`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${state.token}`
+                    },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.text && data.text.trim()) {
+                        if (input) {
+                            input.value = data.text.trim();
+                            autoScaleTextarea(input);
+                            handleSendMessage();
+                        }
+                    } else {
+                        if (input) input.placeholder = "No speech detected. Please try again.";
+                    }
+                } else {
+                    const errData = await response.json();
+                    throw new Error(errData.detail || 'STT_FAILED');
+                }
+            } catch (err) {
+                console.error("STT synthesis execution failed:", err);
+                alert("Speech to text translation failed: " + err.message);
+                if (input) {
+                    input.placeholder = "ENTER_COMMAND...";
+                }
+            }
+        };
+
+        mediaRecorder.start();
+    } catch (err) {
+        console.error("Failed to establish audio streams:", err);
+        alert("Failed to access microphone. Please verify operational permissions.");
     }
 }
 
 function stopListening() {
     state.listening = false;
-    if (recognition) recognition.stop();
+    if (voiceInputMode === 'recognition') {
+        if (recognition) {
+            try { recognition.stop(); } catch(e) {}
+        }
+    } else if (voiceInputMode === 'recorder') {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            try { mediaRecorder.stop(); } catch(e) {}
+        }
+    }
     updateMicUI();
 }
 

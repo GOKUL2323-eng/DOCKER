@@ -16,6 +16,27 @@ router = APIRouter()
 
 @router.post("/register", response_model=UserResponse)
 async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
+    # 1. Cap capacity to 3 operatives
+    result_count = await db.execute(select(User))
+    users_list = result_count.scalars().all()
+    if len(users_list) >= 3:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Operative security protocol: Roster full. Registration closed."
+        )
+
+    # 2. Strict founder/operative verification
+    allowed_keywords = ["gokul", "balaji", "gokul2323", "balajimj"]
+    username_lower = user.username.lower()
+    email_lower = user.email.lower()
+    
+    is_authorized = any(kw in username_lower or kw in email_lower for kw in allowed_keywords)
+    if not is_authorized:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Operative profile rejected. Unauthorized signature."
+        )
+
     # Check existing user
     result = await db.execute(select(User).where(User.username == user.username))
     if result.scalars().first():
@@ -161,6 +182,27 @@ async def google_login(request: GoogleLoginRequest, db: AsyncSession = Depends(g
     user = result.scalars().first()
     
     if not user:
+        # 1. Cap capacity to 3 operatives
+        result_count = await db.execute(select(User))
+        users_list = result_count.scalars().all()
+        if len(users_list) >= 3:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="Operative security protocol: Roster full. Registration closed."
+            )
+
+        # 2. Strict founder/operative verification
+        allowed_keywords = ["gokul", "balaji", "gokul2323", "balajimj"]
+        email_lower = email.lower()
+        name_lower = name.lower()
+        
+        is_authorized = any(kw in email_lower or kw in name_lower for kw in allowed_keywords)
+        if not is_authorized:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Social profile registration rejected. Unauthorized operative signature."
+            )
+
         base_username = email.split("@")[0]
         username = base_username
         counter = 1

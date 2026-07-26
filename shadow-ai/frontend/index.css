@@ -114,7 +114,7 @@ body {
     font-size: 15px;
     line-height: 1.6;
     overflow: hidden;
-    height: 100vh;
+    height: 100dvh;
     transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease;
 }
 
@@ -127,8 +127,14 @@ body {
     height: 100%;
     z-index: 0;
     background: #000;
-    opacity: 0.35;
+    opacity: 0.25;
     display: var(--matrix-display);
+}
+
+@media (max-width: 1024px) {
+    #neuralMatrix {
+        opacity: 0.12;
+    }
 }
 
 /* Cyber Theme Scanning and Noise Overlays */
@@ -196,8 +202,9 @@ body.theme-cyber .custom-scrollbar::-webkit-scrollbar-thumb:hover {
 #app {
     display: flex;
     flex-direction: row;
-    height: 100vh;
+    height: 100dvh;
     width: 100vw;
+    overflow: hidden;
     position: relative;
     z-index: 10;
 }
@@ -491,7 +498,16 @@ body.theme-chatgpt-light .session-action-btn:hover {
 body.theme-cyber .cyber-panel {
     border: 1px solid rgba(57, 255, 20, 0.3);
     border-left: var(--panel-border-left);
-    background: rgba(10, 10, 15, 0.85);
+    background: rgba(5, 5, 10, 0.97);
+}
+
+@media (max-width: 1024px) {
+    body.theme-cyber .cyber-panel {
+        background: rgba(2, 2, 8, 0.99);
+    }
+    body.theme-cyber .cyber-panel-red {
+        background: rgba(2, 2, 8, 0.99);
+    }
 }
 
 body.theme-cyber .cyber-panel-red {
@@ -1407,8 +1423,10 @@ body {
         left: 0;
         top: 0;
         bottom: 0;
+        height: 100dvh;
         transform: translateX(-260px);
         margin-left: 0;
+        z-index: 50;
     }
     
     #sidebar.sidebar-mobile-active {
@@ -1419,7 +1437,7 @@ body {
     #sidebarBackdrop {
         position: fixed;
         inset: 0;
-        background-color: rgba(0,0,0,0.5);
+        background-color: rgba(0,0,0,0.6);
         z-index: 45;
     }
     
@@ -1430,6 +1448,25 @@ body {
         bottom: 0;
         width: 100% !important;
         z-index: 60;
+    }
+
+    /* Ensure the main chat container fills viewport correctly on mobile */
+    #chatContainer {
+        height: 100dvh;
+        max-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    /* Chat window scroll area — give extra bottom padding for input area */
+    #chatWindow {
+        padding-bottom: 140px !important;
+    }
+
+    /* Fix control console z-index on mobile */
+    .absolute.bottom-0.left-0 {
+        z-index: 30;
     }
 }
 

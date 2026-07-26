@@ -19,8 +19,8 @@
                         cyber: {
                             black: '#050505',
                             dark: '#0a0a0b',
-                            blue: '#00f3ff',
-                            red: '#ff003c',
+                            blue: '#00f0ff',
+                            red: '#39ff14',
                             gray: '#1e293b',
                             textPrimary: '#f0f0f5',
                             textSecondary: '#94a3b8'
@@ -118,11 +118,11 @@ body.theme-cyber {
     --bg-primary: #050505;
     --bg-secondary: #0a0a0b;
     --bg-tertiary: rgba(10, 10, 15, 0.85);
-    --border-color: rgba(255, 0, 60, 0.2);
+    --border-color: rgba(57, 255, 20, 0.3);
     --text-primary: #f0f0f5;
     --text-secondary: #94a3b8;
-    --accent-color: #ff003c; /* Cyber Red */
-    --accent-hover: #ff3366;
+    --accent-color: #39ff14; /* Neon Green */
+    --accent-hover: #00ff00;
     --user-msg-bg: rgba(10, 10, 15, 0.85);
     --ai-msg-bg: rgba(10, 10, 15, 0.85);
     --input-bg: rgba(255, 255, 255, 0.03);
@@ -131,15 +131,23 @@ body.theme-cyber {
     --matrix-display: block;
     --scanline-display: block;
     --glow-effect: drop-shadow(0 0 10px var(--accent-color));
-    --panel-border: 1px solid rgba(255, 0, 60, 0.3);
-    --panel-border-left: 3px solid #00f3ff;
+    --panel-border: 1px solid rgba(57, 255, 20, 0.35);
+    --panel-border-left: 3px solid #00f0ff; /* Neon Cyan */
     --workspace-bg: #050505;
     --workspace-editor-bg: #030303;
     --workspace-terminal-bg: #010101;
-    --shadow-sm: 0 1px 2px rgba(255,0,60,0.15);
+    --shadow-sm: 0 1px 2px rgba(57,255,20,0.15);
     --shadow-md: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
-    --shadow-lg: 0 8px 32px 0 rgba(255, 0, 60, 0.15);
+    --shadow-lg: 0 8px 32px 0 rgba(57, 255, 20, 0.15);
 }
+
+body.theme-cyber #chatContainer {
+    background-color: transparent;
+}
+body.theme-cyber .bg-cyber-black {
+    background-color: transparent;
+}
+
 
 /* Base Styles */
 * {
@@ -155,7 +163,7 @@ body {
     font-size: 15px;
     line-height: 1.6;
     overflow: hidden;
-    height: 100vh;
+    height: 100dvh;
     transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease;
 }
 
@@ -166,10 +174,16 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: -1;
+    z-index: 0;
     background: #000;
     opacity: 0.25;
     display: var(--matrix-display);
+}
+
+@media (max-width: 1024px) {
+    #neuralMatrix {
+        opacity: 0.12;
+    }
 }
 
 /* Cyber Theme Scanning and Noise Overlays */
@@ -237,8 +251,9 @@ body.theme-cyber .custom-scrollbar::-webkit-scrollbar-thumb:hover {
 #app {
     display: flex;
     flex-direction: row;
-    height: 100vh;
+    height: 100dvh;
     width: 100vw;
+    overflow: hidden;
     position: relative;
     z-index: 10;
 }
@@ -505,8 +520,18 @@ body.theme-chatgpt-light .session-action-btn:hover {
 
 .message-outer-container {
     max-width: 768px;
-    margin: 0 auto 24px auto;
     width: 100%;
+    margin-bottom: 24px;
+}
+
+.message-outer-container[data-role="assistant"] {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+.message-outer-container[data-role="user"] {
+    margin-left: auto;
+    margin-right: 0;
 }
 
 .cyber-panel, .cyber-panel-red {
@@ -520,14 +545,23 @@ body.theme-chatgpt-light .session-action-btn:hover {
 }
 
 body.theme-cyber .cyber-panel {
-    border: 1px solid rgba(255, 0, 60, 0.3);
-    border-left: 3px solid var(--accent-blue);
-    background: rgba(10, 10, 15, 0.85);
+    border: 1px solid rgba(57, 255, 20, 0.3);
+    border-left: var(--panel-border-left);
+    background: rgba(5, 5, 10, 0.97);
+}
+
+@media (max-width: 1024px) {
+    body.theme-cyber .cyber-panel {
+        background: rgba(2, 2, 8, 0.99);
+    }
+    body.theme-cyber .cyber-panel-red {
+        background: rgba(2, 2, 8, 0.99);
+    }
 }
 
 body.theme-cyber .cyber-panel-red {
-    border: 1px solid rgba(255, 0, 60, 0.1);
-    border-right: 4px solid var(--accent-red);
+    border: 1px solid rgba(57, 255, 20, 0.2);
+    border-right: 4px solid var(--accent-color);
     background: rgba(10, 10, 15, 0.85);
 }
 
@@ -1438,8 +1472,10 @@ body {
         left: 0;
         top: 0;
         bottom: 0;
+        height: 100dvh;
         transform: translateX(-260px);
         margin-left: 0;
+        z-index: 50;
     }
     
     #sidebar.sidebar-mobile-active {
@@ -1450,7 +1486,7 @@ body {
     #sidebarBackdrop {
         position: fixed;
         inset: 0;
-        background-color: rgba(0,0,0,0.5);
+        background-color: rgba(0,0,0,0.6);
         z-index: 45;
     }
     
@@ -1462,12 +1498,80 @@ body {
         width: 100% !important;
         z-index: 60;
     }
+
+    /* Ensure the main chat container fills viewport correctly on mobile */
+    #chatContainer {
+        height: 100dvh;
+        max-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    /* Chat window scroll area — give extra bottom padding for input area */
+    #chatWindow {
+        padding-bottom: 140px !important;
+    }
+
+    /* Fix control console z-index on mobile */
+    .absolute.bottom-0.left-0 {
+        z-index: 30;
+    }
+}
+
+/* Cyberpunk Input Styling */
+.cyber-input {
+    background: rgba(10, 10, 15, 0.7);
+    border: 1px solid rgba(57, 255, 20, 0.25);
+    color: #39ff14; /* Neon green text */
+    border-radius: 8px;
+    outline: none;
+    transition: all 0.25s ease;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 500;
+}
+
+.cyber-input:focus {
+    border-color: #00f0ff; /* Neon cyan focus */
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.35);
+    background: rgba(10, 10, 15, 0.95);
+}
+
+.cyber-input::placeholder {
+    color: rgba(57, 255, 20, 0.35);
+    letter-spacing: 0.1em;
+}
+
+/* Cyberpunk Button Styling */
+.cyber-btn {
+    background: rgba(57, 255, 20, 0.1);
+    border: 1px solid #39ff14;
+    color: #39ff14;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.1);
+}
+
+.cyber-btn:hover {
+    background: #39ff14;
+    color: #000;
+    box-shadow: 0 0 25px rgba(57, 255, 20, 0.45);
+    transform: translateY(-2px);
+}
+
+.cyber-btn:active {
+    transform: translateY(0);
 }
 
 </style>
 </head>
 
-<body class="bg-black text-white font-rajdhani h-dvh overflow-hidden">
+<body class="theme-cyber bg-black text-white font-rajdhani h-dvh overflow-hidden">
     <canvas id="neuralMatrix"></canvas>
     <div id="app" class="relative z-10 h-full w-full flex flex-col">
         <!-- Views are injected here -->
@@ -1554,7 +1658,7 @@ var state = window.state;
 // View management logic
 const views = {
     auth: () => `
-        <div class="flex-1 flex items-center justify-center p-4 overflow-auto bg-cyber-black">
+        <div class="flex-1 flex items-center justify-center p-4 overflow-auto bg-transparent">
             <div class="w-full max-w-md">
                 <div class="text-center mb-10 flex flex-col items-center">
                     <div class="w-24 h-24 rounded-full border border-cyber-red/40 p-1 mb-6 bg-black shadow-[0_0_30px_rgba(255,0,60,0.15)] overflow-hidden animate-float">
@@ -1624,7 +1728,7 @@ const views = {
             return '<div class="flex items-center justify-center h-full text-cyber-blue animate-pulse uppercase tracking-widest">Redirecting to Neural Uplink...</div>';
         }
         return `
-        <div class="flex-1 flex overflow-hidden bg-transparent">
+        <div class="flex-1 flex overflow-hidden bg-transparent h-full">
             <!-- Sidebar Backdrop for mobile -->
             <div id="sidebarBackdrop" onclick="toggleSidebar(false)" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden lg:hidden transition-all duration-300"></div>
 
@@ -1660,6 +1764,10 @@ const views = {
                 </div>
 
                 <div class="mt-8 pt-6 border-t border-white/5 space-y-2">
+                    <button onclick="showPrefectOrchestrator()" class="w-full flex items-center justify-between p-3 text-[10px] uppercase font-black text-cyber-blue/60 hover:text-cyber-blue hover:bg-cyber-blue/5 transition-all tracking-widest border border-cyber-blue/10">
+                        <span>PREFECT_ORCHESTRATOR</span>
+                        <span class="text-cyber-blue">⚙</span>
+                    </button>
                     <button onclick="showSystemCore()" class="w-full flex items-center justify-between p-3 text-[10px] uppercase font-black text-cyber-blue/60 hover:text-cyber-blue hover:bg-cyber-blue/5 transition-all tracking-widest border border-cyber-blue/10">
                         <span>SYSTEM_CORE</span>
                         <span class="animate-pulse">●</span>
@@ -1709,7 +1817,7 @@ const views = {
                         <div class="max-w-5xl mx-auto">
                             <div class="relative group">
                                 <!-- Payload Preview -->
-                                <div id="imagePreviewContainer" class="absolute bottom-full left-0 mb-4 hidden animate-float">
+                                <div id="imagePreviewContainer" class="absolute bottom-full left-0 mb-4 hidden animate-float" style="display: none;">
                                     <div class="relative group">
                                         <img id="imagePreview" src="" class="h-24 rounded border border-cyber-blue/30 shadow-2xl">
                                         <button onclick="clearImage()" class="absolute -top-2 -right-2 w-6 h-6 bg-cyber-red text-white flex items-center justify-center text-[11px] rounded transition-transform hover:scale-110">✕</button>
@@ -1720,7 +1828,7 @@ const views = {
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
                                     </button>
                                     
-                                    <input type="file" id="imageInput" class="hidden" accept="image/*,.txt,.js,.py,.html,.css,.json,.md,.csv,.log,.sh" onchange="handleImageSelect(event)">
+                                    <input type="file" id="imageInput" class="hidden" accept="image/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/*,application/json,.csv,.log,.sh,.py,.js,.html,.css,.md" onchange="handleImageSelect(event)">
                                     
                                     <textarea id="chatInput" rows="1" placeholder="ENTER_COMMAND..." 
                                         class="flex-1 bg-transparent border-none focus:ring-0 text-white font-rajdhani text-lg resize-none min-h-[44px] max-h-48 py-2 custom-scrollbar placeholder:text-white/10" 
@@ -1798,6 +1906,168 @@ function autoScaleTextarea(el) {
     el.style.height = 'auto';
     el.style.height = (el.scrollHeight) + 'px';
 }
+
+// Prefect Orchestrator Modal
+function showPrefectOrchestrator() {
+    const modal = document.createElement('div');
+    modal.className = 'cyber-modal-overlay';
+    modal.innerHTML = `
+        <div class="cyber-modal max-w-4xl">
+            <div class="p-8">
+                <div class="flex justify-between items-center mb-8 border-b border-cyber-blue/20 pb-4">
+                    <div>
+                        <h2 class="text-2xl font-orbitron font-black text-cyber-blue tracking-tighter italic">PREFECT_ORCHESTRATION_CORE</h2>
+                        <p class="text-[10px] uppercase tracking-[4px] text-cyber-textSecondary opacity-70">Multi-Language Flow Dashboard</p>
+                    </div>
+                    <button onclick="this.closest('.cyber-modal-overlay').remove()" class="text-cyber-red/50 hover:text-cyber-red p-2 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="border border-white/5 bg-black/40 p-4 rounded">
+                        <p class="text-[11px] text-cyber-textSecondary mb-2 font-mono uppercase">
+                            This panel orchestrates a real-time Prefect pipeline to process messages across linguistic boundaries.
+                        </p>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></span>
+                            <span class="text-[10px] text-green-500 uppercase tracking-widest font-black">Orchestrator Link Online</span>
+                            <a href="http://localhost:4200" target="_blank" class="ml-auto text-[10px] text-cyber-blue hover:underline uppercase tracking-wider font-mono">
+                                Launch Prefect Server UI →
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="block text-[10px] uppercase tracking-[2px] text-cyber-textSecondary font-bold">Multilingual Inputs (One prompt per line)</label>
+                        <textarea id="prefectInputs" rows="3" class="w-full bg-[#030303] border border-white/5 rounded-lg p-3 font-mono text-sm text-cyber-blue focus:outline-none focus:border-cyber-blue/30 resize-none custom-scrollbar" placeholder="வணக்கம் ஷேடோ, உங்கள் நிலை என்ன?&#10;नमस्ते शैडो, अपनी स्थिति बताओ।&#10;Hola Shadow, ¿cuál es tu estado?"></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="block text-[10px] uppercase tracking-[2px] text-cyber-textSecondary font-bold">Output Target Language</label>
+                            <select id="prefectTargetLang" class="w-full bg-cyber-dark text-cyber-blue border border-white/10 text-sm font-bold tracking-wider focus:outline-none cursor-pointer p-3 rounded">
+                                <option value="en">English (English)</option>
+                                <option value="ta">Tamil (தமிழ்)</option>
+                                <option value="hi">Hindi (हिन्दी)</option>
+                                <option value="es">Spanish (Español)</option>
+                                <option value="fr">French (Français)</option>
+                                <option value="te">Telugu (తెలుగు)</option>
+                                <option value="ja">Japanese (日本語)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="executePrefectFlow(this)" class="w-full cyber-btn h-12 font-orbitron font-black text-xs uppercase tracking-widest">
+                                Run Prefect Pipeline ⚡
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="prefectStatus" class="hidden p-4 border border-cyber-blue/30 bg-cyber-blue/5 rounded text-xs font-mono">
+                        <div class="flex items-center gap-3">
+                            <div class="animate-spin rounded-full h-4 w-4 border-2 border-t-transparent border-cyber-blue"></div>
+                            <span class="text-cyber-blue uppercase tracking-wider font-bold">Processing through Prefect Server DAG...</span>
+                        </div>
+                    </div>
+
+                    <div id="prefectResults" class="hidden space-y-4">
+                        <h3 class="text-xs font-orbitron font-bold text-cyber-blue uppercase tracking-widest">Pipeline Outputs</h3>
+                        <div class="overflow-x-auto border border-white/5 rounded custom-scrollbar">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="border-b border-white/10 bg-white/5 font-mono text-[10px] text-cyber-textSecondary uppercase">
+                                        <th class="p-3">Original Text</th>
+                                        <th class="p-3">Detected</th>
+                                        <th class="p-3">English Translation</th>
+                                        <th class="p-3">AI Response (EN)</th>
+                                        <th class="p-3">Final Response</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="prefectResultsBody" class="font-sans leading-relaxed text-cyber-textPrimary/80">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Close on overlay click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
+}
+
+async function executePrefectFlow(btn) {
+    const inputsText = document.getElementById('prefectInputs').value.trim();
+    const targetLang = document.getElementById('prefectTargetLang').value;
+    const statusDiv = document.getElementById('prefectStatus');
+    const resultsDiv = document.getElementById('prefectResults');
+    const resultsBody = document.getElementById('prefectResultsBody');
+
+    if (!inputsText) {
+        alert('Please enter at least one input prompt.');
+        return;
+    }
+
+    const texts = inputsText.split('\n').map(t => t.trim()).filter(t => t.length > 0);
+    if (texts.length === 0) {
+        alert('Please enter at least one valid non-empty input prompt.');
+        return;
+    }
+
+    btn.disabled = true;
+    statusDiv.classList.remove('hidden');
+    resultsDiv.classList.add('hidden');
+
+    try {
+        const response = await fetch(`${API_BASE}/api/chat/prefect/run`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${state.token}`
+            },
+            body: JSON.stringify({ texts, target_lang: targetLang })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.detail || 'Failed to execute Prefect flow.');
+        }
+
+        const data = await response.json();
+        if (data.success && data.results) {
+            resultsBody.innerHTML = '';
+            data.results.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-white/5 hover:bg-white/5 transition-colors';
+                tr.innerHTML = `
+                    <td class="p-3 font-medium font-mono">${r.original_text}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 border border-cyber-red/20 bg-cyber-red/5 text-cyber-red font-mono text-[9px] uppercase">${r.detected_lang}</span></td>
+                    <td class="p-3 text-white/70">${r.english_text}</td>
+                    <td class="p-3 text-white/70">${r.english_response}</td>
+                    <td class="p-3 text-cyber-blue font-semibold">${r.final_response}</td>
+                `;
+                resultsBody.appendChild(tr);
+            });
+            resultsDiv.classList.remove('hidden');
+        } else {
+            throw new Error('Invalid response structure received.');
+        }
+    } catch (e) {
+        console.error(e);
+        alert(`Pipeline error: ${e.message}`);
+    } finally {
+        btn.disabled = false;
+        statusDiv.classList.add('hidden');
+    }
+}
+
+window.showPrefectOrchestrator = showPrefectOrchestrator;
+window.executePrefectFlow = executePrefectFlow;
 
 // System Core Modal (Team/Credits)
 function showSystemCore() {
@@ -1910,6 +2180,27 @@ function showSystemCore() {
     });
 }
 
+// Sidebar toggle utility for mobile
+function toggleSidebar(show) {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    if (!sidebar || !backdrop) return;
+    
+    const isActive = show !== undefined ? show : !sidebar.classList.contains('sidebar-mobile-active');
+    
+    if (isActive) {
+        sidebar.classList.add('sidebar-mobile-active');
+        sidebar.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden');
+    } else {
+        sidebar.classList.remove('sidebar-mobile-active');
+        sidebar.classList.add('-translate-x-full');
+        backdrop.classList.add('hidden');
+    }
+}
+window.toggleSidebar = toggleSidebar;
+window.toggleSidebarMobile = toggleSidebar;
+
 // Navigation
 function navigate(viewName) {
     const app = document.getElementById('app');
@@ -1949,7 +2240,7 @@ function initNeuralMatrix() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
         ctx.fillRect(0, 0, width, height);
 
-        ctx.fillStyle = '#00ff9d';
+        ctx.fillStyle = '#39ff14';
         ctx.font = `bold ${fontSize}px Rajdhani`;
 
         for (let i = 0; i < drops.length; i++) {
@@ -2145,7 +2436,10 @@ async function initGoogleSignIn() {
         const config = await res.json();
         
         if (!config.google_client_id) {
-            container.innerHTML = `<p class="text-[10px] text-cyber-red/50 uppercase tracking-widest font-black text-center">Google Client ID Not Configured</p>`;
+            container.innerHTML = `<div class="text-[9px] text-cyber-blue/40 uppercase tracking-widest font-mono text-center flex flex-col items-center gap-1 select-none">
+                <span>● LOCAL AUTH PROTOCOL ACTIVE</span>
+                <span class="text-[8px] opacity-60">Google Federation Link Standby</span>
+            </div>`;
             return;
         }
 
@@ -2462,9 +2756,9 @@ function appendMessage(role, content, isStreaming = false) {
     const outerDiv = document.createElement('div');
     outerDiv.className = 'message-outer-container';
     outerDiv.dataset.role = role;
+    outerDiv.dataset.rawContent = content;
     if (isStreaming) {
         outerDiv.dataset.streaming = 'true';
-        outerDiv.dataset.rawContent = content;
     }
 
     const panelClass = isUser ? 'cyber-panel-red' : 'cyber-panel';
@@ -2479,9 +2773,19 @@ function appendMessage(role, content, isStreaming = false) {
                     ${avatarContent}
                 </div>
                 <div class="message-content-container">
-                    <div class="message-header">
+                    <div class="message-header flex items-center justify-between">
                         <span class="message-sender">${senderLabel}</span>
-                        <span class="message-timestamp">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}</span>
+                        <div class="flex items-center gap-2">
+                            ${!isUser ? `
+                            <button onclick="speakMessageBubble(this)" class="speak-msg-btn text-cyber-textSecondary hover:text-cyber-blue transition-colors p-1" title="Speak Response">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                </svg>
+                            </button>
+                            ` : ''}
+                            <span class="message-timestamp">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}</span>
+                        </div>
                     </div>
                     <div class="message-content">
                         ${state.selectedImageData && isUser ? `<img src="data:image/jpeg;base64,${state.selectedImageData}" class="max-w-sm mb-4 rounded border border-cyber-red/30 shadow-2xl" />` : ''}
@@ -2594,8 +2898,6 @@ async function handleSendMessage(event) {
         if (responseFlow.status === 401) { logout(); return; }
         if (!responseFlow.ok) throw new Error("UPLINK_FAILURE");
 
-        removeTypingIndicator();
-        
         // Process SSE Stream
         const reader = responseFlow.body.getReader();
         const decoder = new TextDecoder();
@@ -2676,40 +2978,115 @@ function toggleResponseMode() {
     }
 }
 
+function getActiveSpeakingButton() {
+    const marked = document.querySelector('.speak-msg-btn.speaking');
+    if (marked) return marked;
+    
+    const all = document.querySelectorAll('.speak-msg-btn');
+    if (all.length > 0) return all[all.length - 1];
+    
+    return null;
+}
+
+function stopActiveSpeech() {
+    if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+    }
+    if (state.currentAudio) {
+        state.currentAudio.pause();
+        state.currentAudio = null;
+    }
+    document.querySelectorAll('.speak-msg-btn').forEach(btn => {
+        btn.classList.remove('speaking');
+        btn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+        `;
+    });
+}
+
+function speakMessageBubble(btn) {
+    const outerDiv = btn.closest('.message-outer-container');
+    if (!outerDiv) return;
+    const rawContent = outerDiv.dataset.rawContent || '';
+    if (!rawContent) return;
+
+    if (btn.classList.contains('speaking')) {
+        stopActiveSpeech();
+        return;
+    }
+
+    stopActiveSpeech();
+
+    btn.classList.add('speaking');
+    btn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+        </svg>
+    `;
+
+    speakResponse(rawContent, state.preferredLang);
+}
+
 async function speakResponse(text, lang) {
     const cleanText = text.replace(/[*#`_\[\]()]/g, '').replace(/!\[.*?\]\(.*?\)/g, '');
     if (!cleanText) return;
 
-    let neuralStarted = false;
-    const fallbackTimeout = setTimeout(() => {
-        if (!neuralStarted) {
-            speakFallback(cleanText, lang);
-        }
-    }, 450);
+    // Auto-highlight button if not manually triggered
+    const btn = getActiveSpeakingButton();
+    if (btn && !btn.classList.contains('speaking')) {
+        btn.classList.add('speaking');
+        btn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+            </svg>
+        `;
+    }
 
     try {
+        // Cancel any active SpeechSynthesis or Audio playing
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        if (state.currentAudio) {
+            state.currentAudio.pause();
+            state.currentAudio = null;
+        }
+
+        // Fetch neural TTS audio from backend, using a 3s AbortController timeout to prevent long delays
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
         const response = await fetch(`${API_BASE}/api/chat/tts`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${state.token}`
             },
-            body: JSON.stringify({ text: cleanText, lang: lang || 'en-US' })
+            body: JSON.stringify({ text: cleanText, lang: lang || 'en-US' }),
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
 
         if (response.ok) {
             const data = await response.json();
             if (data.audioContent) {
-                clearTimeout(fallbackTimeout);
-                if (window.speechSynthesis) window.speechSynthesis.cancel();
-                neuralStarted = true;
                 const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
-                audio.play();
+                state.currentAudio = audio;
+                audio.onended = () => {
+                    stopActiveSpeech();
+                };
+                await audio.play();
                 return;
             }
         }
+        
+        // If response is not ok or missing audio content, trigger local fallback
+        speakFallback(cleanText, lang);
     } catch (err) {
-        // Fallback triggers
+        console.warn("[TTS_SERVICE]: Neural synthesis vector offline. Engaging local system fallback.", err);
+        speakFallback(cleanText, lang);
     }
 }
 
@@ -2718,6 +3095,13 @@ function speakFallback(cleanText, lang) {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = lang || 'en';
+    
+    utterance.onend = () => {
+        stopActiveSpeech();
+    };
+    utterance.onerror = () => {
+        stopActiveSpeech();
+    };
     
     const voices = window.speechSynthesis.getVoices();
     const targetLangPrefix = (lang || 'en').toLowerCase().split('-')[0];
@@ -2746,9 +3130,16 @@ function formatAIResponse(str) {
     
     const renderer = new marked.Renderer();
     
-    renderer.code = (code, lang) => {
+    renderer.code = (codeOrObj, lang) => {
+        let code = codeOrObj;
+        let codeLang = lang;
+        if (codeOrObj && typeof codeOrObj === 'object') {
+            code = codeOrObj.text || '';
+            codeLang = codeOrObj.lang || lang;
+        }
+
         const encodedCode = btoa(unescape(encodeURIComponent(code)));
-        const displayLang = lang ? lang.toUpperCase() : 'CODE';
+        const displayLang = codeLang ? codeLang.toUpperCase() : 'CODE';
         
         return `
             <div class="code-block-container">
@@ -2758,7 +3149,7 @@ function formatAIResponse(str) {
                         <button onclick="copyCodeSnippet('${encodedCode}', this)" class="code-action-btn">
                             COPY CODE
                         </button>
-                        <button onclick="loadCodeIntoWorkspace('${encodedCode}', '${lang || 'python'}')" class="code-action-btn">
+                        <button onclick="loadCodeIntoWorkspace('${encodedCode}', '${codeLang || 'python'}')" class="code-action-btn">
                             LOAD TO WORKSPACE
                         </button>
                     </div>
@@ -2809,42 +3200,76 @@ function copyCodeSnippet(encodedCode, buttonEl) {
     });
 }
 
-function handleImageSelect(event) {
+async function handleImageSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
+
+    const preview = document.getElementById('imagePreview');
+    const container = document.getElementById('imagePreviewContainer');
 
     if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = e => {
             state.selectedImageData = e.target.result;
             state.selectedFileText = null;
-            
-            const preview = document.getElementById('imagePreview');
-            const container = document.getElementById('imagePreviewContainer');
             if (preview && container) {
                 preview.src = e.target.result;
-                container.classList.remove('hidden');
+                container.style.display = 'block';
             }
         };
         reader.readAsDataURL(file);
     } else {
-        const reader = new FileReader();
-        reader.onload = e => {
+        // Non-image files (PDF, Docx, Spreadsheet, Text files, etc.)
+        if (preview && container) {
+            // Show loading doc icon with spinning styling
+            const loadingSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="%2339ff14" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>`;
+            preview.src = loadingSvg;
+            preview.className = "h-24 rounded border border-cyber-blue/30 shadow-2xl animate-spin";
+            container.style.display = 'block';
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch(`${API_BASE}/api/chat/parse-file`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${state.token}`
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || "PARSE_FAILED");
+            }
+
+            const data = await response.json();
+            
+            // If user cleared the attachment while loading, abort setting state
+            if (container && container.style.display === 'none') {
+                return;
+            }
+
             state.selectedFileText = {
-                name: file.name,
-                content: e.target.result
+                name: data.filename,
+                content: data.content
             };
             state.selectedImageData = null;
-            
-            const preview = document.getElementById('imagePreview');
-            const container = document.getElementById('imagePreviewContainer');
-            if (preview && container) {
-                const svgIcon = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="%2310a37f" stroke-width="1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
-                preview.src = svgIcon;
-                container.classList.remove('hidden');
+
+            if (preview) {
+                // Restore non-spinning class and show active green document icon
+                preview.className = "h-24 rounded border border-cyber-blue/30 shadow-2xl";
+                const docSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="%2339ff14" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
+                preview.src = docSvg;
+                preview.title = data.filename;
             }
-        };
-        reader.readAsText(file);
+        } catch (err) {
+            console.error("Payload analysis failed:", err);
+            alert("Operational Alert: File parsing failure. " + err.message);
+            clearImage();
+        }
     }
 }
 
@@ -2854,8 +3279,12 @@ function clearImage() {
     const preview = document.getElementById('imagePreview');
     const container = document.getElementById('imagePreviewContainer');
     const input = document.getElementById('imageInput');
-    if (preview) preview.src = '';
-    if (container) container.classList.add('hidden');
+    if (preview) {
+        preview.src = '';
+        preview.className = "h-24 rounded border border-cyber-blue/30 shadow-2xl";
+        preview.removeAttribute('title');
+    }
+    if (container) container.style.display = 'none';
     if (input) input.value = '';
 }
 
@@ -2875,54 +3304,59 @@ function quickAction(command) {
     }
 }
 
-// Voice Recognition
+// Voice Recognition & Recording Fallback
 let recognition = null;
+let mediaRecorder = null;
+let audioChunks = [];
+let voiceInputMode = 'recognition'; // 'recognition' or 'recorder'
+
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.lang = state.getBCP47(state.preferredLang || 'en-US');
+    try {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = state.getBCP47(state.preferredLang || 'en-US');
 
-    recognition.onstart = () => {
-        state.listening = true;
-        updateMicUI();
-    };
+        recognition.onstart = () => {
+            state.listening = true;
+            voiceInputMode = 'recognition';
+            updateMicUI();
+        };
 
-    recognition.onresult = (event) => {
-        const transcript = Array.from(event.results)
-            .map(result => result[0])
-            .map(result => result.transcript)
-            .join('');
-        
-        const input = document.getElementById('chatInput');
-        if (input) {
-            input.value = transcript;
-            autoScaleTextarea(input);
-        }
-    };
-
-    recognition.onerror = (event) => {
-        console.error('Voice input error:', event.error);
-        stopListening();
-    };
-
-    recognition.onend = () => {
-        if (state.listening) {
+        recognition.onresult = (event) => {
+            const transcript = Array.from(event.results)
+                .map(result => result[0])
+                .map(result => result.transcript)
+                .join('');
+            
             const input = document.getElementById('chatInput');
-            if (input && input.value.trim()) {
-                handleSendMessage();
+            if (input) {
+                input.value = transcript;
+                autoScaleTextarea(input);
             }
-        }
-        stopListening();
-    };
+        };
+
+        recognition.onerror = (event) => {
+            console.error('Voice recognition error:', event.error);
+            stopListening();
+        };
+
+        recognition.onend = () => {
+            if (state.listening && voiceInputMode === 'recognition') {
+                const input = document.getElementById('chatInput');
+                if (input && input.value.trim()) {
+                    handleSendMessage();
+                }
+            }
+            stopListening();
+        };
+    } catch (e) {
+        console.error('Failed to initialize Web Speech Recognition:', e);
+    }
 }
 
 function toggleMicrophone() {
-    if (!recognition) {
-        alert('Speech recognition is not supported in this browser.');
-        return;
-    }
     if (state.listening) {
         stopListening();
     } else {
@@ -2930,19 +3364,119 @@ function toggleMicrophone() {
     }
 }
 
-function startListening() {
-    if (!recognition) return;
+async function startListening() {
+    // 1. Try browser-based Speech Recognition first if supported
+    if (recognition) {
+        try {
+            recognition.lang = state.getBCP47(state.preferredLang || 'en-US');
+            recognition.start();
+            voiceInputMode = 'recognition';
+            return;
+        } catch (e) {
+            console.warn('Native SpeechRecognition failed, falling back to MediaRecorder:', e);
+        }
+    }
+
+    // 2. Fall back to MediaRecorder recording to backend
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Voice input is not supported in this browser context (requires HTTPS or localhost).');
+        return;
+    }
+
     try {
-        recognition.lang = state.getBCP47(state.preferredLang || 'en-US');
-        recognition.start();
-    } catch (e) {
-        console.warn('Recognition active');
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunks = [];
+        mediaRecorder = new MediaRecorder(stream);
+        
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
+        };
+
+        mediaRecorder.onstart = () => {
+            state.listening = true;
+            voiceInputMode = 'recorder';
+            updateMicUI();
+            
+            const input = document.getElementById('chatInput');
+            if (input) {
+                input.placeholder = "Listening... Click mic button to stop and transcribe.";
+            }
+        };
+
+        mediaRecorder.onstop = async () => {
+            const input = document.getElementById('chatInput');
+            if (input) {
+                input.placeholder = "ENTER_COMMAND...";
+            }
+
+            // Stop all audio tracks to release microphone hardware
+            stream.getTracks().forEach(track => track.stop());
+
+            if (audioChunks.length === 0) return;
+
+            const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+            
+            if (input) {
+                input.value = "";
+                input.placeholder = "Synthesizing voice transcription...";
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('file', audioBlob, 'voice_feed.webm');
+
+                const response = await fetch(`${API_BASE}/api/chat/stt`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${state.token}`
+                    },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.text && data.text.trim()) {
+                        if (input) {
+                            input.value = data.text.trim();
+                            autoScaleTextarea(input);
+                            handleSendMessage();
+                        }
+                    } else {
+                        if (input) input.placeholder = "No speech detected. Please try again.";
+                    }
+                } else {
+                    const errData = await response.json();
+                    throw new Error(errData.detail || 'STT_FAILED');
+                }
+            } catch (err) {
+                console.error("STT synthesis execution failed:", err);
+                alert("Speech to text translation failed: " + err.message);
+                if (input) {
+                    input.placeholder = "ENTER_COMMAND...";
+                }
+            }
+        };
+
+        mediaRecorder.start();
+    } catch (err) {
+        console.error("Failed to establish audio streams:", err);
+        alert("Failed to access microphone. Please verify operational permissions.");
     }
 }
 
 function stopListening() {
     state.listening = false;
-    if (recognition) recognition.stop();
+    if (voiceInputMode === 'recognition') {
+        if (recognition) {
+            try { recognition.stop(); } catch(e) {}
+        }
+    } else if (voiceInputMode === 'recorder') {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            try { mediaRecorder.stop(); } catch(e) {}
+        }
+    }
     updateMicUI();
 }
 

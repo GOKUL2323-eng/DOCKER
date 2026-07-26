@@ -144,7 +144,7 @@ const views = {
             return '<div class="flex items-center justify-center h-full text-cyber-blue animate-pulse uppercase tracking-widest">Redirecting to Neural Uplink...</div>';
         }
         return `
-        <div class="flex-1 flex overflow-hidden bg-transparent">
+        <div class="flex-1 flex overflow-hidden bg-transparent h-full">
             <!-- Sidebar Backdrop for mobile -->
             <div id="sidebarBackdrop" onclick="toggleSidebar(false)" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden lg:hidden transition-all duration-300"></div>
 
@@ -180,6 +180,10 @@ const views = {
                 </div>
 
                 <div class="mt-8 pt-6 border-t border-white/5 space-y-2">
+                    <button onclick="showPrefectOrchestrator()" class="w-full flex items-center justify-between p-3 text-[10px] uppercase font-black text-cyber-blue/60 hover:text-cyber-blue hover:bg-cyber-blue/5 transition-all tracking-widest border border-cyber-blue/10">
+                        <span>PREFECT_ORCHESTRATOR</span>
+                        <span class="text-cyber-blue">⚙</span>
+                    </button>
                     <button onclick="showSystemCore()" class="w-full flex items-center justify-between p-3 text-[10px] uppercase font-black text-cyber-blue/60 hover:text-cyber-blue hover:bg-cyber-blue/5 transition-all tracking-widest border border-cyber-blue/10">
                         <span>SYSTEM_CORE</span>
                         <span class="animate-pulse">●</span>
@@ -240,7 +244,7 @@ const views = {
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
                                     </button>
                                     
-                                    <input type="file" id="imageInput" class="hidden" accept="image/*,.txt,.js,.py,.html,.css,.json,.md,.csv,.log,.sh" onchange="handleImageSelect(event)">
+                                    <input type="file" id="imageInput" class="hidden" accept="image/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/*,application/json,.csv,.log,.sh,.py,.js,.html,.css,.md" onchange="handleImageSelect(event)">
                                     
                                     <textarea id="chatInput" rows="1" placeholder="ENTER_COMMAND..." 
                                         class="flex-1 bg-transparent border-none focus:ring-0 text-white font-rajdhani text-lg resize-none min-h-[44px] max-h-48 py-2 custom-scrollbar placeholder:text-white/10" 
@@ -318,6 +322,168 @@ function autoScaleTextarea(el) {
     el.style.height = 'auto';
     el.style.height = (el.scrollHeight) + 'px';
 }
+
+// Prefect Orchestrator Modal
+function showPrefectOrchestrator() {
+    const modal = document.createElement('div');
+    modal.className = 'cyber-modal-overlay';
+    modal.innerHTML = `
+        <div class="cyber-modal max-w-4xl">
+            <div class="p-8">
+                <div class="flex justify-between items-center mb-8 border-b border-cyber-blue/20 pb-4">
+                    <div>
+                        <h2 class="text-2xl font-orbitron font-black text-cyber-blue tracking-tighter italic">PREFECT_ORCHESTRATION_CORE</h2>
+                        <p class="text-[10px] uppercase tracking-[4px] text-cyber-textSecondary opacity-70">Multi-Language Flow Dashboard</p>
+                    </div>
+                    <button onclick="this.closest('.cyber-modal-overlay').remove()" class="text-cyber-red/50 hover:text-cyber-red p-2 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="border border-white/5 bg-black/40 p-4 rounded">
+                        <p class="text-[11px] text-cyber-textSecondary mb-2 font-mono uppercase">
+                            This panel orchestrates a real-time Prefect pipeline to process messages across linguistic boundaries.
+                        </p>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></span>
+                            <span class="text-[10px] text-green-500 uppercase tracking-widest font-black">Orchestrator Link Online</span>
+                            <a href="http://localhost:4200" target="_blank" class="ml-auto text-[10px] text-cyber-blue hover:underline uppercase tracking-wider font-mono">
+                                Launch Prefect Server UI →
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="block text-[10px] uppercase tracking-[2px] text-cyber-textSecondary font-bold">Multilingual Inputs (One prompt per line)</label>
+                        <textarea id="prefectInputs" rows="3" class="w-full bg-[#030303] border border-white/5 rounded-lg p-3 font-mono text-sm text-cyber-blue focus:outline-none focus:border-cyber-blue/30 resize-none custom-scrollbar" placeholder="வணக்கம் ஷேடோ, உங்கள் நிலை என்ன?&#10;नमस्ते शैडो, अपनी स्थिति बताओ।&#10;Hola Shadow, ¿cuál es tu estado?"></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="block text-[10px] uppercase tracking-[2px] text-cyber-textSecondary font-bold">Output Target Language</label>
+                            <select id="prefectTargetLang" class="w-full bg-cyber-dark text-cyber-blue border border-white/10 text-sm font-bold tracking-wider focus:outline-none cursor-pointer p-3 rounded">
+                                <option value="en">English (English)</option>
+                                <option value="ta">Tamil (தமிழ்)</option>
+                                <option value="hi">Hindi (हिन्दी)</option>
+                                <option value="es">Spanish (Español)</option>
+                                <option value="fr">French (Français)</option>
+                                <option value="te">Telugu (తెలుగు)</option>
+                                <option value="ja">Japanese (日本語)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="executePrefectFlow(this)" class="w-full cyber-btn h-12 font-orbitron font-black text-xs uppercase tracking-widest">
+                                Run Prefect Pipeline ⚡
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="prefectStatus" class="hidden p-4 border border-cyber-blue/30 bg-cyber-blue/5 rounded text-xs font-mono">
+                        <div class="flex items-center gap-3">
+                            <div class="animate-spin rounded-full h-4 w-4 border-2 border-t-transparent border-cyber-blue"></div>
+                            <span class="text-cyber-blue uppercase tracking-wider font-bold">Processing through Prefect Server DAG...</span>
+                        </div>
+                    </div>
+
+                    <div id="prefectResults" class="hidden space-y-4">
+                        <h3 class="text-xs font-orbitron font-bold text-cyber-blue uppercase tracking-widest">Pipeline Outputs</h3>
+                        <div class="overflow-x-auto border border-white/5 rounded custom-scrollbar">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="border-b border-white/10 bg-white/5 font-mono text-[10px] text-cyber-textSecondary uppercase">
+                                        <th class="p-3">Original Text</th>
+                                        <th class="p-3">Detected</th>
+                                        <th class="p-3">English Translation</th>
+                                        <th class="p-3">AI Response (EN)</th>
+                                        <th class="p-3">Final Response</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="prefectResultsBody" class="font-sans leading-relaxed text-cyber-textPrimary/80">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Close on overlay click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
+}
+
+async function executePrefectFlow(btn) {
+    const inputsText = document.getElementById('prefectInputs').value.trim();
+    const targetLang = document.getElementById('prefectTargetLang').value;
+    const statusDiv = document.getElementById('prefectStatus');
+    const resultsDiv = document.getElementById('prefectResults');
+    const resultsBody = document.getElementById('prefectResultsBody');
+
+    if (!inputsText) {
+        alert('Please enter at least one input prompt.');
+        return;
+    }
+
+    const texts = inputsText.split('\n').map(t => t.trim()).filter(t => t.length > 0);
+    if (texts.length === 0) {
+        alert('Please enter at least one valid non-empty input prompt.');
+        return;
+    }
+
+    btn.disabled = true;
+    statusDiv.classList.remove('hidden');
+    resultsDiv.classList.add('hidden');
+
+    try {
+        const response = await fetch(`${API_BASE}/api/chat/prefect/run`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${state.token}`
+            },
+            body: JSON.stringify({ texts, target_lang: targetLang })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.detail || 'Failed to execute Prefect flow.');
+        }
+
+        const data = await response.json();
+        if (data.success && data.results) {
+            resultsBody.innerHTML = '';
+            data.results.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-white/5 hover:bg-white/5 transition-colors';
+                tr.innerHTML = `
+                    <td class="p-3 font-medium font-mono">${r.original_text}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 border border-cyber-red/20 bg-cyber-red/5 text-cyber-red font-mono text-[9px] uppercase">${r.detected_lang}</span></td>
+                    <td class="p-3 text-white/70">${r.english_text}</td>
+                    <td class="p-3 text-white/70">${r.english_response}</td>
+                    <td class="p-3 text-cyber-blue font-semibold">${r.final_response}</td>
+                `;
+                resultsBody.appendChild(tr);
+            });
+            resultsDiv.classList.remove('hidden');
+        } else {
+            throw new Error('Invalid response structure received.');
+        }
+    } catch (e) {
+        console.error(e);
+        alert(`Pipeline error: ${e.message}`);
+    } finally {
+        btn.disabled = false;
+        statusDiv.classList.add('hidden');
+    }
+}
+
+window.showPrefectOrchestrator = showPrefectOrchestrator;
+window.executePrefectFlow = executePrefectFlow;
 
 // System Core Modal (Team/Credits)
 function showSystemCore() {
@@ -429,6 +595,27 @@ function showSystemCore() {
         if (e.target === modal) modal.remove();
     });
 }
+
+// Sidebar toggle utility for mobile
+function toggleSidebar(show) {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    if (!sidebar || !backdrop) return;
+    
+    const isActive = show !== undefined ? show : !sidebar.classList.contains('sidebar-mobile-active');
+    
+    if (isActive) {
+        sidebar.classList.add('sidebar-mobile-active');
+        sidebar.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden');
+    } else {
+        sidebar.classList.remove('sidebar-mobile-active');
+        sidebar.classList.add('-translate-x-full');
+        backdrop.classList.add('hidden');
+    }
+}
+window.toggleSidebar = toggleSidebar;
+window.toggleSidebarMobile = toggleSidebar;
 
 // Navigation
 function navigate(viewName) {

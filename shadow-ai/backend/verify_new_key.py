@@ -3,7 +3,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 
 # Load from .env file
-load_dotenv(r"c:\Users\gokul\OneDrive\Pictures\Attachments\Documents\GK_workspace\shadow-ai\backend\.env")
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 def verify_key():
     api_key = os.getenv("OPENAI_API_KEY")

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -8,7 +8,7 @@ from models.chat import ChatMessageRequest
 from models.orm import ChatSessionDB, MessageDB
 from services.auth_service import get_current_user
 from services.db import get_db, AsyncSessionLocal
-from services.openai_service import generate_chat_response
+from services.openai_service import generate_chat_response, get_openai_client
 from services.google_tts_service import GoogleTTSService
 from datetime import datetime
 from pydantic import BaseModel
@@ -43,6 +43,189 @@ async def text_to_speech(request: TTSRequest):
             raise HTTPException(status_code=500, detail="TTS synthesis failed or credentials missing.")
     except Exception as e:
         print(f"[ROUTE_ERROR]: TTS Failure: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/stt")
+async def speech_to_text(
+    file: UploadFile = File(...),
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Speech to text endpoint using OpenAI Whisper or Gemini fallback.
+    Accepts uploaded audio file and returns transcribed text.
+    """
+    try:
+        # Read audio file bytes
+        audio_bytes = await file.read()
+        if not audio_bytes:
+            raise HTTPException(status_code=400, detail="Empty audio payload.")
+
+        mime_type = file.content_type or "audio/webm"
+        
+        # Determine appropriate file extension for Whisper API
+        ext = ".webm"
+        if "wav" in mime_type:
+            ext = ".wav"
+        elif "mp3" in mime_type:
+            ext = ".mp3"
+        elif "m4a" in mime_type:
+            ext = ".m4a"
+        elif "ogg" in mime_type:
+            ext = ".ogg"
+        elif "mpeg" in mime_type:
+            ext = ".mpeg"
+
+        # Create temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as temp_audio:
+            temp_audio.write(audio_bytes)
+            temp_path = temp_audio.name
+
+        try:
+            from core.config import settings
+            
+            # Check OpenAI first
+            if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY.strip():
+                client = get_openai_client()
+                with open(temp_path, "rb") as f:
+                    transcription = await client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=f
+                    )
+                return {"text": transcription.text}
+            
+            # Check Gemini fallback
+            elif settings.GEMINI_API_KEY and settings.GEMINI_API_KEY.strip():
+                import google.generativeai as genai
+                genai.configure(api_key=settings.GEMINI_API_KEY)
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                
+                # Gemini generate_content expects the run in executor for blocking SDK calls
+                loop = asyncio.get_running_loop()
+                response = await loop.run_in_executor(
+                    None,
+                    lambda: model.generate_content([
+                        {
+                            "mime_type": mime_type,
+                            "data": audio_bytes
+                        },
+                        "Please transcribe this audio recording exactly. Output ONLY the transcription text and nothing else, no annotations, no preamble."
+                    ])
+                )
+                return {"text": response.text.strip()}
+            
+            else:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Tactical STT failed: Neither OpenAI nor Gemini credentials found."
+                )
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+                
+    except Exception as e:
+        print(f"[ROUTE_ERROR]: STT Failure: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/parse-file")
+async def parse_file(
+    file: UploadFile = File(...),
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Parses various file types (PDF, Word, Excel, Plain Text) and extracts their textual content.
+    Returns the parsed text content.
+    """
+    try:
+        filename = file.filename or "uploaded_file"
+        content_type = file.content_type or ""
+        ext = os.path.splitext(filename)[1].lower()
+        
+        file_bytes = await file.read()
+        if not file_bytes:
+            return {"content": ""}
+
+        text_content = ""
+        import io
+
+        # 1. PDF Parsing
+        if ext == ".pdf" or "application/pdf" in content_type:
+            try:
+                from pypdf import PdfReader
+                pdf_file = io.BytesIO(file_bytes)
+                pdf_reader = PdfReader(pdf_file)
+                pages_text = []
+                for i, page in enumerate(pdf_reader.pages):
+                    page_text = page.extract_text()
+                    if page_text:
+                        pages_text.append(f"--- PAGE {i+1} ---\n{page_text}")
+                text_content = "\n".join(pages_text)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Failed to parse PDF document: {str(e)}")
+
+        # 2. Word (DOCX) Parsing
+        elif ext in [".docx", ".doc"] or "word" in content_type or "msword" in content_type:
+            try:
+                import docx
+                docx_file = io.BytesIO(file_bytes)
+                doc = docx.Document(docx_file)
+                paragraphs_text = [p.text for p in doc.paragraphs]
+                
+                # Also extract table text
+                tables_text = []
+                for t_idx, table in enumerate(doc.tables):
+                    table_rows = []
+                    for row in table.rows:
+                        row_cells = [cell.text.strip() for cell in row.cells]
+                        table_rows.append(" | ".join(row_cells))
+                    if table_rows:
+                        tables_text.append(f"--- WORD TABLE {t_idx+1} ---\n" + "\n".join(table_rows))
+                
+                text_content = "\n\n".join(paragraphs_text + tables_text)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Failed to parse Word document: {str(e)}")
+
+        # 3. Excel (XLSX) Parsing
+        elif ext in [".xlsx", ".xls"] or "spreadsheet" in content_type or "excel" in content_type:
+            try:
+                import openpyxl
+                xlsx_file = io.BytesIO(file_bytes)
+                wb = openpyxl.load_workbook(xlsx_file, read_only=True, data_only=True)
+                sheets_text = []
+                for sheet_name in wb.sheetnames:
+                    sheet = wb[sheet_name]
+                    rows_text = []
+                    for row in sheet.iter_rows(values_only=True):
+                        if any(row):  # Skip completely empty rows
+                            row_str = " | ".join([str(val) if val is not None else "" for val in row])
+                            rows_text.append(row_str)
+                    if rows_text:
+                        sheets_text.append(f"--- SHEET: {sheet_name} ---\n" + "\n".join(rows_text))
+                text_content = "\n\n".join(sheets_text)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Failed to parse Excel spreadsheet: {str(e)}")
+
+        # 4. Fallback to Plain Text (CSV, JSON, XML, TXT, LOG, JS, PY, HTML, CSS, MD, etc.)
+        else:
+            try:
+                # Try decoding as UTF-8
+                text_content = file_bytes.decode("utf-8")
+            except UnicodeDecodeError:
+                try:
+                    # Fallback to Latin-1
+                    text_content = file_bytes.decode("latin-1")
+                except Exception as e:
+                    raise HTTPException(status_code=400, detail=f"Unsupported binary file encoding: {str(e)}")
+
+        return {
+            "filename": filename,
+            "size": len(file_bytes),
+            "content": text_content
+        }
+        
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"[ROUTE_ERROR]: File Parsing Failure: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 from fastapi.responses import StreamingResponse
@@ -396,4 +579,25 @@ async def execute_code_payload(request: CodeExecuteRequest):
             "stderr": f"Execution of language '{lang}' is not supported on the backend.",
             "exit_code": -1
         }
+
+
+class PrefectFlowRequest(BaseModel):
+    texts: List[str]
+    target_lang: str = "en"
+
+@router.post("/prefect/run")
+async def run_prefect_flow(request: PrefectFlowRequest, current_user: UserInDB = Depends(get_current_user)):
+    """
+    Triggers the Prefect multi-language flow and returns the structured execution results.
+    This runs the flow inside the FastAPI request context, reporting tasks and telemetry
+    to the active Prefect Server configuration automatically.
+    """
+    try:
+        from prefect_flow import multilingual_translation_flow
+        results = await multilingual_translation_flow(request.texts, request.target_lang)
+        return {"success": True, "results": results}
+    except Exception as e:
+        print(f"[ROUTE_ERROR]: Prefect Flow Execution failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 

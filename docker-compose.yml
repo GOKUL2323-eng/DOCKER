@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  shadow-ai:
+    build:
+      context: ./shadow-ai
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - SECRET_KEY=your-super-secret-key-change-me
+      - DATABASE_URL=sqlite+aiosqlite:////data/shadow_ai.db
+      - PREFECT_API_URL=http://prefect-server:4200/api
+      # Add other environment variables here as needed
+      # - OPENAI_API_KEY=your-key
+      # - GEMINI_API_KEY=your-key
+    volumes:
+      - shadow-db-data:/data
+    depends_on:
+      - prefect-server
+    restart: unless-stopped
+
+  prefect-server:
+    image: prefecthq/prefect:3-latest
+    command: prefect server start
+    ports:
+      - "4200:4200"
+    environment:
+      - PREFECT_SERVER_API_HOST=0.0.0.0
+      - PREFECT_API_DATABASE_CONNECTION_URL=sqlite+aiosqlite:////root/.prefect/prefect.db
+    volumes:
+      - prefect-db-data:/root/.prefect
+    restart: unless-stopped
+
+volumes:
+  shadow-db-data:
+  prefect-db-data:
+

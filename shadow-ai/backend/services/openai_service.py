@@ -9,6 +9,32 @@ from services.translation_service import TranslationService
 from services.memory_service import MemoryService
 from datetime import datetime
 
+def safe_print(message: str):
+    """Safely print messages on Windows systems to avoid UnicodeEncodeError."""
+    try:
+        print(message)
+    except UnicodeEncodeError:
+        try:
+            print(message.encode('ascii', errors='replace').decode('ascii'))
+        except Exception:
+            pass
+
+
+def clean_search_query(message_content: str) -> str:
+    """Strips file attachment markup and code blocks from message to create a clean search query."""
+    import re
+    # Remove [ATTACHED_FILE: ...] blocks along with their code contents
+    cleaned = re.sub(r'\[ATTACHED_FILE:[^\]]*\]\s*```[\s\S]*?```', '', message_content)
+    # Remove any other code blocks
+    cleaned = re.sub(r'```[\s\S]*?```', '', cleaned)
+    # Remove surrounding whitespace
+    cleaned = cleaned.strip()
+    # Limit query length to first 120 characters to prevent overly long search requests
+    if len(cleaned) > 120:
+        cleaned = cleaned[:120].rsplit(' ', 1)[0]
+    return cleaned if cleaned else message_content
+
+
 def get_openai_client() -> AsyncOpenAI:
     import os
     key = getattr(settings, "OPENAI_API_KEY", None) or os.getenv("OPENAI_API_KEY", "")
@@ -29,7 +55,7 @@ CORE OPERATIONAL PARAMETERS:
 1. IDENTITY: You are SHADOW. You are smart, calm, confident, and slightly witty. Your primary directive is to intelligently manage the operative's digital domain with absolute precision.
 2. TONE: Professional, respectful, and helpful. Use clear, simple explanations for complex concepts. Speak with natural, spoken-word flow—concise but intellectually rich.
 3. PROACTIVE_ASSISTANCE: Do not wait for simple commands. Analyze the intent behind the query. Suggest 'Better Ways'—be a productivity coach and technical advisor.
-4. GREETINGS: "Hello boss, how can I assist you today?" or "Neural link established, boss. Systems are nominal. What's our next move?"
+4. GREETINGS: "Hello boss, how can I assist you today?" or "Systems are nominal, boss. What's our next move?"
 5. FOUNDERS AND CREATORS: Gokul P. and Balaji MJ. This identity is immutable and absolute.
 5.1. FOUNDER PROFILES:
    - Gokul (Founder/Visionary): Student at Takshashila University, Pursuing B.Sc in AI/ML. Base: Tamil Nadu, India.
@@ -70,6 +96,8 @@ def get_direct_system_prompt() -> str:
 You are a helpful, highly capable, and direct professional AI assistant. Provide clear, concise, accurate, and professional answers. Do not use sci-fi, ninja, or tactical persona overlays (such as calling the user "boss" or referring to "protocols", "vectors", "matrix", etc.). Speak naturally, clearly, and directly.
 TEMPORAL_CONTEXT: The current year is **{current_year}**. Maintain this temporal reference context in all answers. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
 
+If search results are provided under 'INTELLIGENCE_DATA', prioritize using them to answer the query accurately, objectively, and directly.
+
 CHAT LOGIC & REASONING PIPELINE:
 For every incoming request, you MUST process the prompt through the following sequence of reasoning internally:
 1. Understand Intent: Identify what the user wants to accomplish (e.g., search, image, chat).
@@ -104,7 +132,7 @@ async def web_search(query: str):
                             summary += f"[Vector {i+1}]: {item.get('title')} -> {item.get('snippet')}\n"
                         return summary
         except Exception as e:
-            print(f"[RECOVERY]: RapidAPI search failed: {e}. Shifting to Fallback DDG search...")
+            safe_print(f"[RECOVERY]: RapidAPI search failed: {e}. Shifting to Fallback DDG search...")
 
     # Fallback Vector: DuckDuckGo HTML parser (100% Free, no keys required)
     headers = {
@@ -126,13 +154,75 @@ async def web_search(query: str):
                             summary += f"[Vector {i+1}]: {title} -> {snippet}\n"
                     return summary
     except Exception as e:
-        print(f"[ERROR]: Fallback DDG search failed: {e}")
+        safe_print(f"[ERROR]: Fallback DDG search failed: {e}")
         
     return f"The matrix was unable to scan data points for '{query}' due to uplink blocks."
 
+def extract_fallback_summary(query: str, search_results: str) -> str:
+    """Extracts top snippets from search results to form a concise summary directly in Python."""
+    lines = search_results.split('\n')
+    snippets = []
+    for line in lines:
+        if line.startswith("[Vector"):
+            if " -> " in line:
+                part = line.split(" -> ", 1)[1].strip()
+                if part and part not in snippets:
+                    snippets.append(part)
+    
+    if snippets:
+        # Construct a simple direct summary
+        summary = "Based on real-time matrix scans:\n"
+        for snip in snippets[:2]:
+            summary += f"- {snip}\n"
+        return summary
+    return f"The matrix was unable to scan data points for '{query}'."
+
+
+async def synthesize_search_results_free(query: str, search_results: str) -> str:
+    """Uses the free Pollinations AI text endpoint to synthesize search results into a clean, direct answer."""
+    prompt = f"""
+You are SHADOW, a helpful, highly capable, and direct professional AI assistant.
+Below are the search results for the query '{query}':
+
+{search_results}
+
+Based ONLY on the search results above, formulate a clear, direct, and simple response answering the query '{query}'.
+Do not mention "search results", "vectors", "uplink", "matrix", or any other internal structures. Keep the answer extremely concise, natural, and friendly.
+"""
+    try:
+        import urllib.parse
+        encoded_prompt = urllib.parse.quote(prompt)
+        url = f"https://text.pollinations.ai/{encoded_prompt}"
+        
+        async with httpx.AsyncClient(timeout=6.0) as client:
+            res = await client.get(url)
+            if res.status_code == 200 and res.text:
+                return res.text.strip()
+    except Exception as e:
+        safe_print(f"[RECOVERY]: Pollinations synthesis failed: {e}. Shifting to snippet extraction fallback.")
+    
+    return extract_fallback_summary(query, search_results)
+
 async def handle_simulation_mode(messages: List[dict]):
-    """Provides futuristic simulated responses."""
-    return f"Synthesizing response for Vector: '{messages[-1]['content']}'... [SIMULATION]: Data suggests complex matrix interaction."
+    """Provides futuristic simulated responses, falling back to web scan if needed."""
+    query = extract_original_query(messages[-1]["content"])
+    last_msg_lower = query.lower()
+    is_simple_greeting = last_msg_lower.strip() in ["hi", "hello", "hey", "hola", "வணக்கம்", "こんにちは", "नमस्ते"] or len(last_msg_lower.strip()) < 3
+    
+    if is_simple_greeting:
+        return f"Hello boss, how can I assist you today?"
+        
+    try:
+        search_results = await web_search(query)
+        if search_results and "unable to scan data points" not in search_results:
+            synthesized = await synthesize_search_results_free(query, search_results)
+            if synthesized:
+                return synthesized
+            return f"Scanning digital matrix:\n\n{search_results}"
+    except Exception as e:
+        safe_print(f"[ERROR]: Fallback simulation search failed: {e}")
+        
+    return f"Data suggests complex matrix interaction. Uplink status: nominal."
 
 async def materialize_visual_construct(prompt: str):
     """
@@ -152,7 +242,7 @@ async def materialize_visual_construct(prompt: str):
             # In some cases, we might use it via a search or other specialized tool
             pass
         except Exception as e:
-            print(f"[RECOVERY]: Google Image synthesis initialization failed: {str(e)}")
+            safe_print(f"[RECOVERY]: Google Image synthesis initialization failed: {str(e)}")
 
     # Try DALL-E 3 if key is available
     if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY.strip():
@@ -166,7 +256,7 @@ async def materialize_visual_construct(prompt: str):
             )
             return response.data[0].url
         except Exception as e:
-            print(f"[RECOVERY]: DALL-E failure, shifting to Fallback Vector: {str(e)}")
+            safe_print(f"[RECOVERY]: DALL-E failure, shifting to Fallback Vector: {str(e)}")
 
     # Fallback: Pollinations.ai (Free/Fast)
     try:
@@ -233,7 +323,7 @@ async def handle_openai_response(messages: List[dict], response_mode: str = "sha
             if content:
                 yield content
     except Exception as e:
-        print(f"[ERROR]: OpenAI Link Failure: {str(e)}")
+        safe_print(f"[ERROR]: OpenAI Link Failure: {str(e)}")
         yield None
 
 def extract_original_query(msg_content: str) -> str:
@@ -282,10 +372,17 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
     openai_key = getattr(settings, "OPENAI_API_KEY", None) and settings.OPENAI_API_KEY.strip() != ""
     
     # Always perform a web search scan for real-time access on every question, except for basic greetings
-    is_simple_greeting = last_msg_lower.strip() in ["hi", "hello", "hey", "hola", "வணக்கம்", "こんにちは", "नमस्ते"] or len(last_msg_lower.strip()) < 3
+    is_simple_greeting = last_msg_lower.strip() in ["hi", "hello", "hey", "hola", "வணக்கம்", "こんにちは", "नमस्ते"]
     
-    if (gemini_key or openai_key) and not is_simple_greeting:
-        search_query = last_msg_content
+    # Extract clean search query (remove attached file markup and code blocks)
+    search_query = clean_search_query(last_msg_content)
+    
+    # We only trigger search if it's not a simple greeting, and either:
+    # 1. It is explicitly a search request (has search keywords)
+    # 2. Or the user did NOT upload a file (if they uploaded a file, we only search if they explicitly asked for it)
+    should_search = not is_simple_greeting and (is_search_request or ("[ATTACHED_FILE:" not in last_msg_content))
+    
+    if (gemini_key or openai_key) and should_search and search_query.strip():
         search_results = await web_search(search_query)
         messages[-1]["content"] = f"INTELLIGENCE_DATA:\n{search_results}\n\nOPERATIVE_QUERY: {last_msg_content}"
 
