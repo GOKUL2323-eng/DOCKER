@@ -24,6 +24,14 @@
       "dest": "/shadow-ai/frontend/index.html"
     },
     {
+      "src": "/robots.txt",
+      "dest": "/shadow-ai/frontend/robots.txt"
+    },
+    {
+      "src": "/sitemap.xml",
+      "dest": "/shadow-ai/frontend/sitemap.xml"
+    },
+    {
       "src": "/(.*)",
       "dest": "/shadow-ai/backend/main.py"
     }
