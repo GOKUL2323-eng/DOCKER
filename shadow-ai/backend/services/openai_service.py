@@ -38,9 +38,10 @@ def clean_search_query(message_content: str) -> str:
 def get_openai_client() -> AsyncOpenAI:
     import os
     key = getattr(settings, "OPENAI_API_KEY", None) or os.getenv("OPENAI_API_KEY", "")
+    base_url = getattr(settings, "OPENAI_BASE_URL", None) or os.getenv("OPENAI_BASE_URL", "https://api.ai.cc/v1")
     return AsyncOpenAI(
         api_key=key,
-        base_url="https://api.ai.cc/v1",
+        base_url=base_url,
         timeout=60.0
     )
 

@@ -82,49 +82,87 @@ async def speech_to_text(
 
         try:
             from core.config import settings
+            stt_errors = []
             
-            # Check OpenAI first
+            # Tier 1: Primary OpenAI client (Whisper)
             if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY.strip():
-                client = get_openai_client()
-                with open(temp_path, "rb") as f:
-                    transcription = await client.audio.transcriptions.create(
-                        model="whisper-1",
-                        file=f
-                    )
-                return {"text": transcription.text}
+                try:
+                    client = get_openai_client()
+                    with open(temp_path, "rb") as f:
+                        transcription = await client.audio.transcriptions.create(
+                            model="whisper-1",
+                            file=f
+                        )
+                    if transcription and hasattr(transcription, "text") and transcription.text and transcription.text.strip():
+                        return {"text": transcription.text.strip()}
+                except Exception as e:
+                    print(f"[STT_WARNING]: Primary OpenAI whisper-1 failed: {e}")
+                    stt_errors.append(f"OpenAI Primary: {str(e)}")
+
+                # Tier 2: Direct Official OpenAI (if custom base_url was set and failed)
+                base_url = getattr(settings, "OPENAI_BASE_URL", "")
+                if base_url and base_url != "https://api.openai.com/v1":
+                    try:
+                        from openai import AsyncOpenAI
+                        direct_client = AsyncOpenAI(
+                            api_key=settings.OPENAI_API_KEY,
+                            base_url="https://api.openai.com/v1",
+                            timeout=30.0
+                        )
+                        with open(temp_path, "rb") as f:
+                            transcription = await direct_client.audio.transcriptions.create(
+                                model="whisper-1",
+                                file=f
+                            )
+                        if transcription and hasattr(transcription, "text") and transcription.text and transcription.text.strip():
+                            return {"text": transcription.text.strip()}
+                    except Exception as e:
+                        print(f"[STT_WARNING]: Direct OpenAI whisper-1 failed: {e}")
+                        stt_errors.append(f"OpenAI Direct: {str(e)}")
             
-            # Check Gemini fallback
-            elif settings.GEMINI_API_KEY and settings.GEMINI_API_KEY.strip():
-                import google.generativeai as genai
-                genai.configure(api_key=settings.GEMINI_API_KEY)
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                
-                # Gemini generate_content expects the run in executor for blocking SDK calls
-                loop = asyncio.get_running_loop()
-                response = await loop.run_in_executor(
-                    None,
-                    lambda: model.generate_content([
-                        {
-                            "mime_type": mime_type,
-                            "data": audio_bytes
-                        },
-                        "Please transcribe this audio recording exactly. Output ONLY the transcription text and nothing else, no annotations, no preamble."
-                    ])
-                )
-                return {"text": response.text.strip()}
+            # Tier 3: Gemini Audio Transcription Fallback
+            if settings.GEMINI_API_KEY and settings.GEMINI_API_KEY.strip():
+                try:
+                    import google.generativeai as genai
+                    genai.configure(api_key=settings.GEMINI_API_KEY)
+                    for model_name in ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro']:
+                        try:
+                            model = genai.GenerativeModel(model_name)
+                            loop = asyncio.get_running_loop()
+                            response = await loop.run_in_executor(
+                                None,
+                                lambda m=model: m.generate_content([
+                                    {
+                                        "mime_type": mime_type,
+                                        "data": audio_bytes
+                                    },
+                                    "Please transcribe this audio recording exactly. Output ONLY the transcription text and nothing else, no annotations, no preamble."
+                                ])
+                            )
+                            if response and hasattr(response, "text") and response.text and response.text.strip():
+                                return {"text": response.text.strip()}
+                        except Exception as ge:
+                            print(f"[STT_WARNING]: Gemini ({model_name}) STT failed: {ge}")
+                            stt_errors.append(f"Gemini {model_name}: {str(ge)}")
+                except Exception as e:
+                    print(f"[STT_WARNING]: Gemini STT setup failed: {e}")
+                    stt_errors.append(f"Gemini Setup: {str(e)}")
             
-            else:
-                raise HTTPException(
-                    status_code=400, 
-                    detail="Tactical STT failed: Neither OpenAI nor Gemini credentials found."
-                )
+            # If all providers fail
+            print(f"[STT_ERROR]: All speech-to-text providers failed. Errors: {stt_errors}")
+            raise HTTPException(
+                status_code=503, 
+                detail="Speech to text transcription failed. Please check backend API keys or try typing your message."
+            )
         finally:
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
                 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[ROUTE_ERROR]: STT Failure: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Failed to process speech input. Please try again.")
 
 @router.post("/parse-file")
 async def parse_file(

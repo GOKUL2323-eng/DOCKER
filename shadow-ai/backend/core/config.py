@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "https://api.ai.cc/v1")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     RAPID_API_KEY: str = os.getenv("RAPID_API_KEY", "")
     GOOGLE_TTS_API_KEY: str = os.getenv("GOOGLE_TTS_API_KEY", "")

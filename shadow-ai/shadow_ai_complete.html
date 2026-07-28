@@ -3453,12 +3453,16 @@ async function startListening() {
                         if (input) input.placeholder = "No speech detected. Please try again.";
                     }
                 } else {
-                    const errData = await response.json();
-                    throw new Error(errData.detail || 'STT_FAILED');
+                    const errData = await response.json().catch(() => ({ detail: 'Speech to text service is unavailable.' }));
+                    let errMsg = errData.detail || 'Voice transcription failed. Please try typing.';
+                    if (typeof errMsg === 'object') {
+                        errMsg = JSON.stringify(errMsg);
+                    }
+                    throw new Error(errMsg);
                 }
             } catch (err) {
                 console.error("STT synthesis execution failed:", err);
-                alert("Speech to text translation failed: " + err.message);
+                alert(err.message.startsWith("Speech to text") ? err.message : "Speech to text: " + err.message);
                 if (input) {
                     input.placeholder = "ENTER_COMMAND...";
                 }
