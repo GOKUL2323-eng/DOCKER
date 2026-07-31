@@ -21,11 +21,16 @@ class Settings(BaseSettings):
     RAPID_API_KEY: str = os.getenv("RAPID_API_KEY", "")
     GOOGLE_TTS_API_KEY: str = os.getenv("GOOGLE_TTS_API_KEY", "")
     IMAGE_GEN_API_KEY: str = os.getenv("IMAGE_GEN_API_KEY", "")
-    GOOGLE_APPLICATION_CREDENTIALS: str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
-    GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    GOOGLE_APPLICATION_CREDENTIALS: str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
+    GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+    GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
+    GOOGLE_REDIRECT_URI: str = os.getenv("GOOGLE_REDIRECT_URI", "").strip()
+    MAX_ROSTER_CAPACITY: int = int(os.getenv("MAX_ROSTER_CAPACITY", "100"))
+    ALLOWED_KEYWORDS: str = os.getenv("ALLOWED_KEYWORDS", "").strip()
 
 
     class Config:
         case_sensitive = True
 
 settings = Settings()
+

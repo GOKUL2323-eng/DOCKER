@@ -25,4 +25,8 @@ ENV PYTHONUNBUFFERED=1
 # Set working directory to backend folder to run the server
 WORKDIR /app/backend
 
+# Create non-root user for container security and set permissions
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
 CMD ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]

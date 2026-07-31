@@ -9,16 +9,20 @@ services:
       - "8080:8080"
     environment:
       - PORT=8080
-      - SECRET_KEY=your-super-secret-key-change-me
-      - DATABASE_URL=sqlite+aiosqlite:////data/shadow_ai.db
+      - SECRET_KEY=${SECRET_KEY:-your-super-secret-key-change-me}
+      - DATABASE_URL=${DATABASE_URL:-sqlite+aiosqlite:////data/shadow_ai.db}
       - PREFECT_API_URL=http://prefect-server:4200/api
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-}
       # Add other environment variables here as needed
-      # - OPENAI_API_KEY=your-key
-      # - GEMINI_API_KEY=your-key
+      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # - GEMINI_API_KEY=${GEMINI_API_KEY}
     volumes:
       - shadow-db-data:/data
     depends_on:
-      - prefect-server
+      prefect-server:
+        condition: service_healthy
     restart: unless-stopped
 
   prefect-server:
@@ -31,6 +35,12 @@ services:
       - PREFECT_API_DATABASE_CONNECTION_URL=sqlite+aiosqlite:////root/.prefect/prefect.db
     volumes:
       - prefect-db-data:/root/.prefect
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4200/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     restart: unless-stopped
 
 volumes:

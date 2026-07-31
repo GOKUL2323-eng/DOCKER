@@ -10,7 +10,10 @@ class User(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     username = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    hashed_password = Column(String, nullable=True)
+    auth_provider = Column(String, default="local")
+    picture = Column(String, nullable=True)
+    google_id = Column(String, unique=True, index=True, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     sessions = relationship("ChatSessionDB", back_populates="user", cascade="all, delete-orphan")

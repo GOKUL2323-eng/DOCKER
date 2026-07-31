@@ -110,7 +110,7 @@ For every incoming request, you MUST process the prompt through the following se
 """
 
 async def web_search(query: str):
-    """Search the digital matrix using RapidAPI with a resilient free DuckDuckGo fallback."""
+    """Search the web using RapidAPI or DuckDuckGo HTML POST / Instant Answer API fallbacks."""
     import re
     
     # Try RapidAPI first if key is available
@@ -135,60 +135,83 @@ async def web_search(query: str):
         except Exception as e:
             safe_print(f"[RECOVERY]: RapidAPI search failed: {e}. Shifting to Fallback DDG search...")
 
-    # Fallback Vector: DuckDuckGo HTML parser (100% Free, no keys required)
+    # Fallback Vector: DuckDuckGo Instant Answer API & HTML Form POST
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            res = await client.get(f"https://html.duckduckgo.com/html/?q={query}", headers=headers)
+            # 1. Instant Answer API
+            try:
+                ia_res = await client.get("https://api.duckduckgo.com/", params={"q": query, "format": "json"})
+                if ia_res.status_code == 200:
+                    ia_data = ia_res.json()
+                    abstract = ia_data.get("AbstractText") or ia_data.get("Definition")
+                    heading = ia_data.get("Heading") or query
+                    if abstract:
+                        return f"Synthesized INTELLIGENCE_DATA for '{query}':\n[Vector 1]: {heading} -> {abstract}\n"
+            except Exception:
+                pass
+
+            # 2. DDG Form POST (Most reliable HTML search)
+            res = await client.post("https://html.duckduckgo.com/html/", data={"q": query}, headers=headers)
             if res.status_code == 200:
-                blocks = re.findall(r'<div class="[^"]*result__body[^"]*">([\s\S]*?)</div>\s*</div>\s*</div>', res.text)
-                if blocks:
+                titles = [re.sub(r'<[^>]+>', '', t).strip() for t in re.findall(r'result__a[^>]*>([\s\S]*?)</a>', res.text)]
+                snippets = [re.sub(r'<[^>]+>', '', s).strip() for s in re.findall(r'result__snippet[^>]*>([\s\S]*?)</(?:a|div|span)>', res.text)]
+                if snippets:
                     summary = f"Synthesized INTELLIGENCE_DATA for '{query}':\n"
-                    for i, block in enumerate(blocks[:5]):
-                        title_match = re.search(r'<a[^>]*class="[^"]*result__a[^"]*"[^>]*>([\s\S]*?)</a>', block)
-                        snippet_match = re.search(r'<a[^>]*class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)</a>', block)
-                        if title_match and snippet_match:
-                            title = re.sub(r'<[^>]+>', "", title_match.group(1)).strip()
-                            snippet = re.sub(r'<[^>]+>', "", snippet_match.group(1)).strip()
-                            summary += f"[Vector {i+1}]: {title} -> {snippet}\n"
+                    for i, (t, s) in enumerate(zip(titles[:5], snippets[:5])):
+                        summary += f"[Vector {i+1}]: {t} -> {s}\n"
+                    return summary
+
+            # 3. DDG HTML GET Fallback
+            res_get = await client.get(f"https://html.duckduckgo.com/html/?q={query}", headers=headers)
+            if res_get.status_code == 200:
+                titles = [re.sub(r'<[^>]+>', '', t).strip() for t in re.findall(r'result__a[^>]*>([\s\S]*?)</a>', res_get.text)]
+                snippets = [re.sub(r'<[^>]+>', '', s).strip() for s in re.findall(r'result__snippet[^>]*>([\s\S]*?)</(?:a|div|span)>', res_get.text)]
+                if snippets:
+                    summary = f"Synthesized INTELLIGENCE_DATA for '{query}':\n"
+                    for i, (t, s) in enumerate(zip(titles[:5], snippets[:5])):
+                        summary += f"[Vector {i+1}]: {t} -> {s}\n"
                     return summary
     except Exception as e:
         safe_print(f"[ERROR]: Fallback DDG search failed: {e}")
         
-    return f"The matrix was unable to scan data points for '{query}' due to uplink blocks."
+    return f"The search index was unable to scan data points for '{query}'."
 
 def extract_fallback_summary(query: str, search_results: str) -> str:
-    """Extracts top snippets from search results to form a concise summary directly in Python."""
+    """Extracts top snippets from search results to form a clear, direct, readable response."""
     lines = search_results.split('\n')
-    snippets = []
+    results_list = []
     for line in lines:
         if line.startswith("[Vector"):
             if " -> " in line:
-                part = line.split(" -> ", 1)[1].strip()
-                if part and part not in snippets:
-                    snippets.append(part)
+                parts = line.split(" -> ", 1)
+                title = parts[0].split("]: ", 1)[-1].strip()
+                snippet = parts[1].strip()
+                if snippet and snippet not in [s for _, s in results_list]:
+                    results_list.append((title, snippet))
     
-    if snippets:
-        # Construct a simple direct summary
-        summary = "Based on real-time matrix scans:\n"
-        for snip in snippets[:2]:
-            summary += f"- {snip}\n"
-        return summary
-    return f"The matrix was unable to scan data points for '{query}'."
-
+    if results_list:
+        output_parts = [f"Here is what I found regarding **{query}**:\n"]
+        for title, snip in results_list[:3]:
+            if title and title not in ["Direct Summary", query]:
+                output_parts.append(f"- **{title}**\n  {snip}")
+            else:
+                output_parts.append(f"- {snip}")
+        return "\n\n".join(output_parts)
+    return f"I couldn't find relevant search information for '{query}' at the moment."
 
 async def synthesize_search_results_free(query: str, search_results: str) -> str:
-    """Uses the free Pollinations AI text endpoint to synthesize search results into a clean, direct answer."""
+    """Uses Pollinations AI text endpoint or snippet extraction to synthesize search results into a clean, direct answer."""
     prompt = f"""
-You are SHADOW, a helpful, highly capable, and direct professional AI assistant.
-Below are the search results for the query '{query}':
+You are a helpful, highly capable, and direct AI assistant.
+Below are search results for '{query}':
 
 {search_results}
 
-Based ONLY on the search results above, formulate a clear, direct, and simple response answering the query '{query}'.
-Do not mention "search results", "vectors", "uplink", "matrix", or any other internal structures. Keep the answer extremely concise, natural, and friendly.
+Based on the search results, answer '{query}' directly, clearly, and accurately.
+Do not mention "search results", "vectors", "uplink", "matrix", or internal codes. Keep it concise, natural, and helpful.
 """
     try:
         import urllib.parse
@@ -197,33 +220,33 @@ Do not mention "search results", "vectors", "uplink", "matrix", or any other int
         
         async with httpx.AsyncClient(timeout=6.0) as client:
             res = await client.get(url)
-            if res.status_code == 200 and res.text:
+            if res.status_code == 200 and res.text and "402" not in res.text and "Payment Required" not in res.text:
                 return res.text.strip()
     except Exception as e:
-        safe_print(f"[RECOVERY]: Pollinations synthesis failed: {e}. Shifting to snippet extraction fallback.")
+        safe_print(f"[RECOVERY]: Pollinations synthesis unavailable: {e}. Shifting to snippet extraction fallback.")
     
     return extract_fallback_summary(query, search_results)
 
 async def handle_simulation_mode(messages: List[dict]):
-    """Provides futuristic simulated responses, falling back to web scan if needed."""
+    """Provides direct, helpful fallback responses when LLM API keys are not configured."""
     query = extract_original_query(messages[-1]["content"])
-    last_msg_lower = query.lower()
-    is_simple_greeting = last_msg_lower.strip() in ["hi", "hello", "hey", "hola", "வணக்கம்", "こんにちは", "नमस्ते"] or len(last_msg_lower.strip()) < 3
+    last_msg_lower = query.lower().strip()
+    is_simple_greeting = last_msg_lower in ["hi", "hello", "hey", "hola", "வணக்கம்", "こんにちは", "नमस्ते"] or len(last_msg_lower) < 3
     
     if is_simple_greeting:
-        return f"Hello boss, how can I assist you today?"
+        return f"Hello! How can I assist you today?"
         
     try:
         search_results = await web_search(query)
         if search_results and "unable to scan data points" not in search_results:
             synthesized = await synthesize_search_results_free(query, search_results)
-            if synthesized:
+            if synthesized and "402" not in synthesized and "Payment Required" not in synthesized:
                 return synthesized
-            return f"Scanning digital matrix:\n\n{search_results}"
+            return extract_fallback_summary(query, search_results)
     except Exception as e:
         safe_print(f"[ERROR]: Fallback simulation search failed: {e}")
         
-    return f"Data suggests complex matrix interaction. Uplink status: nominal."
+    return f"I analyzed your request regarding '{query}'. To enable full conversational AI capabilities, please configure an OPENAI_API_KEY or GEMINI_API_KEY in your environment."
 
 async def materialize_visual_construct(prompt: str):
     """

@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,15 +11,13 @@ from services.db import get_db
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login", auto_error=False)
 
-async def get_current_user(token: Optional[str] = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+async def get_current_user(request: Request, token: Optional[str] = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+    if not token:
+        # Fallback to HTTP-only cookie if token not present in Authorization header
+        token = request.cookies.get("shadow_token")
     if not token:
         return None
         
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         username: str = payload.get("sub")
@@ -38,5 +36,7 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme), db: As
         id=user.id,
         username=user.username,
         email=user.email,
-        hashed_password=user.hashed_password
+        hashed_password=user.hashed_password,
+        picture=user.picture,
+        auth_provider=user.auth_provider
     )

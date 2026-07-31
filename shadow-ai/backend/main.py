@@ -38,7 +38,13 @@ async def lifespan(app: FastAPI):
     yield
 
 
+from starlette.middleware.sessions import SessionMiddleware
+from core.config import settings
+
 app = FastAPI(title="Shadow AI Backend", version="1.0.0", lifespan=lifespan)
+
+# Session middleware for Authlib OAuth 2.0 state management
+app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 
 # Configure CORS for frontend access
 app.add_middleware(
@@ -80,6 +86,7 @@ async def shadow_ai_firewall(request: Request, call_next):
     response.headers["Content-Security-Policy"] = "default-src 'self' https: 'unsafe-inline' 'unsafe-eval' data:; img-src 'self' data: https:;"
     return response
 
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 

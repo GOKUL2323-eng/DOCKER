@@ -33,5 +33,9 @@ EXPOSE 8080
 # Set working directory to backend folder to run the server
 WORKDIR /app/backend
 
+# Create non-root user for security and grant permissions
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app /data
+USER appuser
+
 # Command to run the application
 CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

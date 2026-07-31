@@ -6,13 +6,15 @@ from datetime import datetime
 class UserBase(BaseModel):
     username: str
     email: EmailStr
+    picture: Optional[str] = None
+    auth_provider: Optional[str] = "local"
 
 class UserCreate(UserBase):
     password: str
 
 class UserInDB(UserBase):
     id: Optional[str] = None
-    hashed_password: str
+    hashed_password: Optional[str] = None
     created_at: datetime = datetime.utcnow()
     
     class Config:

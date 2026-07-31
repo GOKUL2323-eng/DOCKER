@@ -100,12 +100,63 @@ async function handleAuth(event) {
     }
 }
 
-function logout() {
+async function loginWithGoogleOAuth() {
+    const errorEl = document.getElementById('authError');
+    if (errorEl) errorEl.classList.add('hidden');
+    window.location.href = `${API_BASE}/auth/login/google`;
+}
+
+function checkOAuthRedirect() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const user = urlParams.get('user');
+    const error = urlParams.get('error');
+
+    if (error) {
+        setTimeout(() => {
+            const errorEl = document.getElementById('authError');
+            if (errorEl) {
+                errorEl.innerText = "SYSTEM PROTOCOL ERROR: " + error;
+                errorEl.classList.remove('hidden');
+            }
+        }, 150);
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+        return;
+    }
+
+    if (token && user) {
+        state.token = token;
+        state.user = user;
+        localStorage.setItem('shadow_token', token);
+        localStorage.setItem('shadow_user', user);
+
+        // Clean query parameters from URL bar
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+
+        if (typeof navigate === 'function') {
+            navigate('chat');
+        }
+    }
+}
+
+// Execute OAuth redirect check immediately on script evaluation
+checkOAuthRedirect();
+
+async function logout() {
     state.token = null;
     state.user = null;
     state.currentSessionId = null;
     localStorage.removeItem('shadow_token');
     localStorage.removeItem('shadow_user');
+    
+    try {
+        await fetch(`${API_BASE}/auth/logout`, { method: 'POST' });
+    } catch (e) {
+        console.warn("Logout cookie cleanup warning:", e);
+    }
+
     navigate('chat');
 }
 
@@ -124,43 +175,22 @@ function togglePasswordVisibility() {
 }
 
 async function initGoogleSignIn() {
-    const container = document.getElementById('googleBtnContainer');
-    if (!container) return;
-
     try {
         const res = await fetch(`${API_BASE}/auth/config`);
-        if (!res.ok) throw new Error("Failed to load config");
+        if (!res.ok) return;
         const config = await res.json();
         
-        if (!config.google_client_id) {
-            container.innerHTML = `<div class="text-[9px] text-cyber-blue/40 uppercase tracking-widest font-mono text-center flex flex-col items-center gap-1 select-none">
-                <span>● LOCAL AUTH PROTOCOL ACTIVE</span>
-                <span class="text-[8px] opacity-60">Google Federation Link Standby</span>
-            </div>`;
-            return;
-        }
-
-        if (window.google && window.google.accounts) {
+        if (config.google_client_id && window.google && window.google.accounts) {
             google.accounts.id.initialize({
                 client_id: config.google_client_id,
-                callback: handleGoogleCredentialResponse
+                callback: handleGoogleCredentialResponse,
+                auto_select: false
             });
-
-            google.accounts.id.renderButton(
-                container,
-                { 
-                    theme: "dark", 
-                    size: "large", 
-                    text: "continue_with",
-                    shape: "rectangular",
-                    width: container.offsetWidth || 340
-                }
-            );
-        } else {
-            setTimeout(initGoogleSignIn, 500);
+            // Display floating Google One Tap dialog overlay if available
+            google.accounts.id.prompt();
         }
     } catch (err) {
-        console.error("Error initializing Google sign-in:", err);
+        console.warn("Google One-Tap initialization info:", err);
     }
 }
 

@@ -3,6 +3,8 @@ uvicorn
 sqlalchemy
 aiosqlite
 httpx
+authlib
+itsdangerous
 motor
 pymongo
 python-jose[cryptography]
@@ -26,3 +28,4 @@ pypdf
 python-docx
 openpyxl
 prefect>=3.0.0
+

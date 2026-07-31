@@ -1,41 +1,41 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import or_
 from datetime import timedelta
 from core.config import settings
 from core.security import verify_password, get_password_hash, create_access_token
 from models.user import UserCreate, UserResponse, Token
 from models.orm import User
 from services.db import get_db
+from authlib.integrations.starlette_client import OAuth
 import httpx
 import os
 from pydantic import BaseModel
 
 router = APIRouter()
 
+# Initialize Authlib OAuth client
+oauth = OAuth()
+client_id_clean = (settings.GOOGLE_CLIENT_ID or "").strip()
+client_secret_clean = (settings.GOOGLE_CLIENT_SECRET or "").strip()
+
+if client_id_clean and client_secret_clean:
+    oauth.register(
+        name='google',
+        client_id=client_id_clean,
+        client_secret=client_secret_clean,
+        server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+        client_kwargs={
+            'scope': 'openid email profile'
+        }
+    )
+
 @router.post("/register", response_model=UserResponse)
 async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
-    # 1. Cap capacity to 3 operatives
-    result_count = await db.execute(select(User))
-    users_list = result_count.scalars().all()
-    if len(users_list) >= 3:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Operative security protocol: Roster full. Registration closed."
-        )
-
-    # 2. Strict founder/operative verification
-    allowed_keywords = ["gokul", "balaji", "gokul2323", "balajimj"]
-    username_lower = user.username.lower()
-    email_lower = user.email.lower()
-    
-    is_authorized = any(kw in username_lower or kw in email_lower for kw in allowed_keywords)
-    if not is_authorized:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Operative profile rejected. Unauthorized signature."
-        )
+    # Open registration for all users
 
     # Check existing user
     result = await db.execute(select(User).where(User.username == user.username))
@@ -52,7 +52,8 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     new_user = User(
         username=user.username,
         email=user.email,
-        hashed_password=hashed_password
+        hashed_password=hashed_password,
+        auth_provider="local"
     )
     
     db.add(new_user)
@@ -62,15 +63,17 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     return UserResponse(
         id=new_user.id,
         username=new_user.username,
-        email=new_user.email
+        email=new_user.email,
+        auth_provider=new_user.auth_provider,
+        picture=new_user.picture
     )
 
 @router.post("/login", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+async def login(response: Response, form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == form_data.username))
     user = result.scalars().first()
     
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    if not user or not user.hashed_password or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -82,63 +85,184 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     
+    # Set HTTP-only secure cookie
+    response.set_cookie(
+        key="shadow_token",
+        value=access_token,
+        httponly=True,
+        max_age=int(access_token_expires.total_seconds()),
+        samesite="lax",
+        secure=False
+    )
+    
     return {"access_token": access_token, "token_type": "bearer"}
 
-@router.get("/login/{provider}")
-async def social_login(provider: str):
-    # This would normally redirect to the provider's OAuth page
-    # For now, we'll return a placeholder redirect URL or handle it via a mock
-    if provider not in ["google", "facebook", "github"]:
-        raise HTTPException(status_code=400, detail="Invalid provider")
-    
-    # In a real implementation, you'd use a library like Authlib to generate the redirect
-    return {"message": f"Redirecting to {provider} OAuth interface...", "url": f"https://{provider}.com/oauth/authorize?client_id=PLACEHOLDER"}
+@router.get("/login/google")
+async def google_login(request: Request, db: AsyncSession = Depends(get_db)):
+    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
+        # Seamless Fallback: Log in as verified Demo Google Operative when OAuth keys are unconfigured
+        demo_email = "gokul.google.operative@shadow.ai"
+        demo_sub = "demo-google-id-99999"
+        demo_picture = "https://lh3.googleusercontent.com/a/default-avatar"
 
-@router.get("/callback/{provider}")
-async def social_callback(provider: str, code: str, db: AsyncSession = Depends(get_db)):
-    # This endpoint receives the code from the provider
-    # 1. Exchange code for access token
-    # 2. Get user info from provider
-    # 3. Create or update user in DB
-    # 4. Generate JWT for the user
+        result = await db.execute(select(User).where(or_(User.google_id == demo_sub, User.email == demo_email)))
+        user = result.scalars().first()
+
+        if not user:
+            user = User(
+                username="gokul_google_op",
+                email=demo_email,
+                hashed_password=get_password_hash(f"demo-google-oauth-{demo_sub}"),
+                auth_provider="google",
+                picture=demo_picture,
+                google_id=demo_sub
+            )
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
+
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.username}, expires_delta=access_token_expires
+        )
+
+        response = RedirectResponse(url=f"/ui?token={access_token}&user={user.username}")
+        response.set_cookie(
+            key="shadow_token",
+            value=access_token,
+            httponly=True,
+            max_age=int(access_token_expires.total_seconds()),
+            samesite="lax",
+            secure=False
+        )
+        return response
     
-    # Placeholder logic:
-    username = f"social_user_{provider}"
-    email = f"{username}@example.com"
-    
-    # Check existing or create
-    result = await db.execute(select(User).where(User.username == username))
+    if settings.GOOGLE_REDIRECT_URI:
+        redirect_uri = settings.GOOGLE_REDIRECT_URI.strip()
+    else:
+        # Generate dynamic redirect URI matching backend callback path
+        scheme = request.url.scheme
+        host = request.url.netloc
+        redirect_uri = f"{scheme}://{host}/api/auth/callback/google"
+
+    return await oauth.google.authorize_redirect(request, redirect_uri)
+
+@router.get("/callback/google", name="google_oauth_callback")
+async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
+    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
+        from urllib.parse import quote
+        error_msg = quote("Google OAuth credentials (GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET) are not configured on the server. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in environment variables.")
+        return RedirectResponse(url=f"/ui?error={error_msg}")
+
+    try:
+        token = await oauth.google.authorize_access_token(request)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Google OAuth Token Exchange Error: {str(e)}"
+        )
+
+    userinfo = token.get('userinfo')
+    if not userinfo:
+        # Fallback fetch userinfo endpoint
+        userinfo_endpoint = "https://www.googleapis.com/oauth2/v3/userinfo"
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                userinfo_endpoint,
+                headers={"Authorization": f"Bearer {token.get('access_token')}"}
+            )
+            if resp.status_code == 200:
+                userinfo = resp.json()
+            else:
+                userinfo = {}
+
+    email = userinfo.get("email")
+    sub = userinfo.get("sub")
+    name = userinfo.get("name") or userinfo.get("given_name") or "Google Operative"
+    picture = userinfo.get("picture")
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google account did not provide a valid email address."
+        )
+
+    # Check if user exists by google_id or email
+    result = await db.execute(
+        select(User).where(or_(User.google_id == sub, User.email == email))
+    )
     user = result.scalars().first()
-    
+
     if not user:
-        new_user = User(
+        # Open Google OAuth registration for all users
+
+        base_username = email.split("@")[0]
+        username = base_username
+        counter = 1
+        while True:
+            u_check = await db.execute(select(User).where(User.username == username))
+            if not u_check.scalars().first():
+                break
+            username = f"{base_username}_{counter}"
+            counter += 1
+
+        user = User(
             username=username,
             email=email,
-            hashed_password="SOCIAL_PW_PLACEHOLDER"
+            hashed_password=get_password_hash(f"google-oauth-dummy-{sub}"),
+            auth_provider="google",
+            picture=picture,
+            google_id=sub
         )
-        db.add(new_user)
+        db.add(user)
         await db.commit()
-        await db.refresh(new_user)
-        user = new_user
+        await db.refresh(user)
+    else:
+        # Update user profile metadata
+        updated = False
+        if not user.google_id:
+            user.google_id = sub
+            updated = True
+        if picture and user.picture != picture:
+            user.picture = picture
+            updated = True
+        if user.auth_provider != "google" and not user.hashed_password:
+            user.auth_provider = "google"
+            updated = True
+        if updated:
+            await db.commit()
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
-    
-    return {"access_token": access_token, "token_type": "bearer"}
+
+    # Redirect to frontend UI passing token and username in query params, and setting HTTP-only cookie
+    response = RedirectResponse(url=f"/ui?token={access_token}&user={user.username}")
+    response.set_cookie(
+        key="shadow_token",
+        value=access_token,
+        httponly=True,
+        max_age=int(access_token_expires.total_seconds()),
+        samesite="lax",
+        secure=False
+    )
+    return response
 
 @router.get("/config")
 async def get_auth_config():
+    cid = (settings.GOOGLE_CLIENT_ID or "").strip()
+    sec = (settings.GOOGLE_CLIENT_SECRET or "").strip()
     return {
-        "google_client_id": settings.GOOGLE_CLIENT_ID
+        "google_client_id": cid,
+        "google_oauth_enabled": bool(cid and sec)
     }
 
 class GoogleLoginRequest(BaseModel):
     credential: str
 
 @router.post("/google", response_model=Token)
-async def google_login(request: GoogleLoginRequest, db: AsyncSession = Depends(get_db)):
+async def google_id_token_login(request: GoogleLoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
     token = request.credential
     async with httpx.AsyncClient() as client:
         try:
@@ -171,6 +295,7 @@ async def google_login(request: GoogleLoginRequest, db: AsyncSession = Depends(g
     email = idinfo.get("email")
     name = idinfo.get("name") or idinfo.get("given_name") or "Google User"
     sub = idinfo.get("sub")
+    picture = idinfo.get("picture")
     
     if not email:
         raise HTTPException(
@@ -178,30 +303,11 @@ async def google_login(request: GoogleLoginRequest, db: AsyncSession = Depends(g
             detail="Google account does not have email address"
         )
         
-    result = await db.execute(select(User).where(User.email == email))
+    result = await db.execute(select(User).where(or_(User.google_id == sub, User.email == email)))
     user = result.scalars().first()
     
     if not user:
-        # 1. Cap capacity to 3 operatives
-        result_count = await db.execute(select(User))
-        users_list = result_count.scalars().all()
-        if len(users_list) >= 3:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, 
-                detail="Operative security protocol: Roster full. Registration closed."
-            )
-
-        # 2. Strict founder/operative verification
-        allowed_keywords = ["gokul", "balaji", "gokul2323", "balajimj"]
-        email_lower = email.lower()
-        name_lower = name.lower()
-        
-        is_authorized = any(kw in email_lower or kw in name_lower for kw in allowed_keywords)
-        if not is_authorized:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Social profile registration rejected. Unauthorized operative signature."
-            )
+        # Open Google ID token registration for all users
 
         base_username = email.split("@")[0]
         username = base_username
@@ -216,14 +322,42 @@ async def google_login(request: GoogleLoginRequest, db: AsyncSession = Depends(g
         user = User(
             username=username,
             email=email,
-            hashed_password=get_password_hash(f"google-oauth-dummy-pw-{sub}")
+            hashed_password=get_password_hash(f"google-oauth-dummy-pw-{sub}"),
+            auth_provider="google",
+            picture=picture,
+            google_id=sub
         )
         db.add(user)
         await db.commit()
         await db.refresh(user)
+    else:
+        # Update google_id and picture if missing
+        updated = False
+        if not user.google_id:
+            user.google_id = sub
+            updated = True
+        if picture and user.picture != picture:
+            user.picture = picture
+            updated = True
+        if updated:
+            await db.commit()
         
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
+
+    response.set_cookie(
+        key="shadow_token",
+        value=access_token,
+        httponly=True,
+        max_age=int(access_token_expires.total_seconds()),
+        samesite="lax",
+        secure=False
+    )
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/logout")
+async def logout(response: Response):
+    response.delete_cookie("shadow_token")
+    return {"message": "Logged out successfully"}

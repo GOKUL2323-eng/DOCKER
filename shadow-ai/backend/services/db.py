@@ -90,6 +90,24 @@ async def init_db():
         # Create all tables
         await conn.run_sync(Base.metadata.create_all)
         
+        # Safely migrate existing users table if missing new columns
+        def run_migrations(connection):
+            from sqlalchemy import inspect, text
+            try:
+                inspector = inspect(connection)
+                if 'users' in inspector.get_table_names():
+                    columns = [c['name'] for c in inspector.get_columns('users')]
+                    if 'auth_provider' not in columns:
+                        connection.execute(text("ALTER TABLE users ADD COLUMN auth_provider VARCHAR DEFAULT 'local'"))
+                    if 'picture' not in columns:
+                        connection.execute(text("ALTER TABLE users ADD COLUMN picture VARCHAR"))
+                    if 'google_id' not in columns:
+                        connection.execute(text("ALTER TABLE users ADD COLUMN google_id VARCHAR"))
+            except Exception as migrate_err:
+                print(f"[DB MIGRATION WARNING]: {migrate_err}")
+
+        await conn.run_sync(run_migrations)
+        
     # Seed default guest user if not present to satisfy FK constraints
     async with AsyncSessionLocal() as session:
         try:
