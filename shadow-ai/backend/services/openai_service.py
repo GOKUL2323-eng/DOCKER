@@ -7,6 +7,7 @@ import google.generativeai as genai
 import httpx
 from services.translation_service import TranslationService
 from services.memory_service import MemoryService
+from services.university_service import UniversityService
 from datetime import datetime
 
 def safe_print(message: str):
@@ -48,6 +49,7 @@ def get_openai_client() -> AsyncOpenAI:
 # Shadow AI Personality Prompt
 def get_shadow_system_prompt() -> str:
     current_year = datetime.now().year
+    univ_context = UniversityService.get_university_system_context()
     return f"""
 # SHADOW: NEURAL MATERIALIZATION INTERFACE (JARVIS_VARIANT) #
 You are SHADOW, an advanced synthesized intelligence designed to serve as the ultimate digital sentinel for the operative Gokul. You combine the lethal efficiency of a Shadow Ninja with the sophisticated, calm, and proactive nature of a high-tier AI assistant like J.A.R.V.I.S.
@@ -71,6 +73,8 @@ CORE OPERATIONAL PARAMETERS:
    Hindi Greeting Vector: "नमस्ते बॉस, मैं आज आपकी कैसे सहायता कर सकता हूँ?"
 8. TEMPORAL_ALIGNMENT: The current year is **{current_year}**. Keep this absolute temporal reference mind for any calculations, calendar references, or current events. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
 
+{univ_context}
+
 CHAT LOGIC & REASONING PIPELINE:
 For every incoming request, you MUST process the prompt through the following sequence of reasoning internally:
 1. Understand Intent: Identify what the user wants to accomplish (e.g., search, image, chat).
@@ -93,9 +97,12 @@ If web search results are provided under 'INTELLIGENCE_DATA', synthesize a clear
 # Standard Direct GPT Personality Prompt
 def get_direct_system_prompt() -> str:
     current_year = datetime.now().year
+    univ_context = UniversityService.get_university_system_context()
     return f"""
 You are a helpful, highly capable, and direct professional AI assistant. Provide clear, concise, accurate, and professional answers. Do not use sci-fi, ninja, or tactical persona overlays (such as calling the user "boss" or referring to "protocols", "vectors", "matrix", etc.). Speak naturally, clearly, and directly.
 TEMPORAL_CONTEXT: The current year is **{current_year}**. Maintain this temporal reference context in all answers. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
+
+{univ_context}
 
 If search results are provided under 'INTELLIGENCE_DATA', prioritize using them to answer the query accurately, objectively, and directly.
 
@@ -392,6 +399,12 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
         context_str = '\n'.join([f'[ARCHIVE_VECTOR]: {c}' for c in neural_archive_data])
         messages[-1]['content'] = f'[INTEL_FROM_NEURAL_ARCHIVE]:\n{context_str}\n\nOPERATIVE_QUERY: {messages[-1]["content"]}'
     
+    # Inject Takshashila University structured knowledge if query is relevant
+    if any(k in last_msg_lower for k in ["takshashila", "ongur", "dhanasekaran", "kochhar", "senthil", "subramaniyan", "deepa", "suphalakshmi", "jayasree", "janaki", "chancellor", "vice-chancellor", "deans", "governing council", "academic council", "bos", "board of studies"]):
+        univ_info = UniversityService.search_university_info(last_msg_content)
+        if univ_info:
+            messages[-1]['content'] = f"[{univ_info}]\n\nOPERATIVE_QUERY: {messages[-1]['content']}"
+
     gemini_key = getattr(settings, "GEMINI_API_KEY", None) and settings.GEMINI_API_KEY.strip() != ""
     openai_key = getattr(settings, "OPENAI_API_KEY", None) and settings.OPENAI_API_KEY.strip() != ""
     

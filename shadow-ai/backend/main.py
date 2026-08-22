@@ -39,6 +39,7 @@ async def lifespan(app: FastAPI):
 
 
 from starlette.middleware.sessions import SessionMiddleware
+from routes import auth, chat, university
 from core.config import settings
 
 app = FastAPI(title="Shadow AI Backend", version="1.0.0", lifespan=lifespan)
@@ -89,6 +90,7 @@ async def shadow_ai_firewall(request: Request, call_next):
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
+app.include_router(university.router, prefix="/api/university", tags=["university"])
 
 # Serve frontend files statically
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")

@@ -1,0 +1,220 @@
+{
+  "university": {
+    "name": "Takshashila University",
+    "location": "Ongur, Tindivanam Taluk, Villupuram District, Tamil Nadu – 604 305",
+    "website": "https://takshashilauniv.ac.in",
+    "motto": "Creating the leaders of tomorrow",
+    "vision": "To develop change-makers and future world leaders, inspired by the knowledge tradition of ancient Takshashila.",
+    "educational_approach": "Experiential learning, research, innovation, industry exposure, and leadership development."
+  },
+  "top_management": [
+    {
+      "name": "Mr. M. Dhanasekaran",
+      "position": "Chancellor"
+    },
+    {
+      "name": "Dr. D. Nila Priyadharshini",
+      "position": "Pro-Chancellor"
+    },
+    {
+      "name": "Mr. D. Rajarajan",
+      "position": "Pro-Chancellor"
+    },
+    {
+      "name": "Dr. J. Ranganathan",
+      "position": "Pro-Chancellor"
+    },
+    {
+      "name": "Dr. Vivek Inder Kochhar",
+      "position": "Vice-Chancellor"
+    },
+    {
+      "name": "Dr. S. Senthil",
+      "position": "Registrar"
+    }
+  ],
+  "governing_council": [
+    {
+      "name": "Mr. M. Dhanasekaran",
+      "role": "Chancellor, Ex-Officio Chairman"
+    },
+    {
+      "name": "Dr. D. Nila Priyadharshini",
+      "role": "Pro-Chancellor"
+    },
+    {
+      "name": "Dr. Vivek Inder Kochhar",
+      "role": "Vice-Chancellor"
+    },
+    {
+      "name": "Mr. D. Rajarajan",
+      "role": "Member nominated by Chancellor"
+    },
+    {
+      "name": "Mrs. D. Geetha",
+      "role": "Director, Mailam Subramaniya Swamy Foundation"
+    },
+    {
+      "name": "Dr. Akilan Ramnathan, IAS (Rtd.)",
+      "role": "Member"
+    },
+    {
+      "name": "Mr. N. Venkatesh",
+      "role": "Founder, Innovative Services, Chennai"
+    },
+    {
+      "name": "Dr. R. Subramaniyan",
+      "role": "Dean, Academic Affairs"
+    },
+    {
+      "name": "Dr. S. Deepa",
+      "role": "Dean, Faculty of Science"
+    },
+    {
+      "name": "Dr. S. Senthil",
+      "role": "Registrar and Member Secretary"
+    }
+  ],
+  "deans": [
+    {
+      "name": "Dr. R. Subramaniyan",
+      "title": "Dean – Academic Affairs",
+      "bio": "28 years of experience in engineering education and administration."
+    },
+    {
+      "name": "Dr. A. Suphalakshmi",
+      "title": "Dean – Faculty of Engineering and Technology",
+      "bio": "More than two decades of experience in technical education, research and institutional development."
+    },
+    {
+      "name": "Dr. S. Deepa",
+      "title": "Dean – Faculty of Sciences and Faculty of Humanities & Social Sciences",
+      "bio": "Ph.D. in Chemistry from Pondicherry University and extensive academic and research experience."
+    },
+    {
+      "name": "Dr. M. Jayasree",
+      "title": "Dean – Medical/Health Sciences",
+      "bio": "Extensive professional experience in medicine and medical education."
+    },
+    {
+      "name": "Dr. K. Seetharaman",
+      "title": "Dean – Research & Academic/Research Affairs",
+      "bio": "Extensive research administration and academic research experience."
+    }
+  ],
+  "academic_council_and_bos_chairs": [
+    {
+      "name": "Dr. R. Subramaniyan",
+      "role": "Dean, Academic Affairs"
+    },
+    {
+      "name": "Dr. S. Deepa",
+      "role": "Dean, Faculty of Sciences"
+    },
+    {
+      "name": "Dr. A. Suphalakshmi",
+      "role": "Dean, Faculty of Engineering & Technology"
+    },
+    {
+      "name": "Dr. M. Jayasree",
+      "role": "Dean, Faculty of Health Sciences"
+    },
+    {
+      "name": "Dr. K. Seetharaman",
+      "role": "Dean, Research & Academic/Research Affairs"
+    },
+    {
+      "name": "Dr. S. Gopala Kannan",
+      "role": "Controller of Examinations"
+    },
+    {
+      "name": "Dr. M. Senthil",
+      "role": "Chairman, Board of Studies, AI & Data Science"
+    },
+    {
+      "name": "Dr. R. Sathya Janaki",
+      "role": "Chairman, Board of Studies, AI & ML"
+    },
+    {
+      "name": "Dr. T. Vijayakumar",
+      "role": "Chairman, Board of Studies, Computer Science"
+    },
+    {
+      "name": "Dr. B. Krishna Kumar",
+      "role": "Chairman, Board of Studies, Management Studies"
+    },
+    {
+      "name": "Dr. P. Deepa",
+      "role": "Chairman, Board of Studies, Commerce"
+    },
+    {
+      "name": "Dr. K. Venkataramanan",
+      "role": "Chairman, Board of Studies, Basic Sciences"
+    },
+    {
+      "name": "Dr. B. Suriya Sabarinath",
+      "role": "Chairman, Board of Studies, Agricultural Sciences"
+    },
+    {
+      "name": "Dr. P. Murugamani",
+      "role": "Chairman, Board of Studies, Social Sciences"
+    },
+    {
+      "name": "Dr. A. Surianarayanan",
+      "role": "Chairman, Board of Studies, Humanities"
+    },
+    {
+      "name": "Mrs. K. N. Jeeva",
+      "role": "Chairman, Board of Studies, Physiotherapy"
+    },
+    {
+      "name": "Dr. M. Bhuvaneswari",
+      "role": "Chairman, Board of Studies, Allied Health Sciences"
+    },
+    {
+      "name": "Dr. S. Sathya",
+      "role": "Chairman, Board of Studies, Pharmacy"
+    },
+    {
+      "name": "Mrs. S. Kasthuri",
+      "role": "Chairman, Board of Studies, Nursing"
+    }
+  ],
+  "aiml_department_contacts": [
+    {
+      "name": "Dr. R. Sathya Janaki",
+      "role": "Chairman, Board of Studies – AI & ML"
+    },
+    {
+      "name": "Dr. M. Senthil",
+      "role": "Chairman, Board of Studies – AI & Data Science"
+    },
+    {
+      "name": "Dr. T. Vijayakumar",
+      "role": "Chairman, Board of Studies – Computer Science"
+    },
+    {
+      "name": "Dr. S. Deepa",
+      "role": "Dean, Faculty of Sciences"
+    },
+    {
+      "name": "Dr. R. Subramaniyan",
+      "role": "Dean, Academic Affairs"
+    }
+  ],
+  "major_academic_areas": [
+    "Engineering & Technology",
+    "Arts & Sciences",
+    "Agriculture",
+    "Health Sciences",
+    "Physiotherapy",
+    "Pharmacy",
+    "Nursing",
+    "Allied Health Sciences",
+    "Management",
+    "Commerce",
+    "Computer Science",
+    "Artificial Intelligence & Machine Learning (AI & ML)",
+    "Data Science"
+  ]
+}
