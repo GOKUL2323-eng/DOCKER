@@ -53,9 +53,11 @@ async function fetchSessions() {
     if (!sessionList) return;
 
     try {
-        const res = await fetch(`${API_BASE}/api/chat/sessions`, {
-            headers: { 'Authorization': `Bearer ${state.token}` }
-        });
+        const headers = {};
+        if (state.token) {
+            headers['Authorization'] = `Bearer ${state.token}`;
+        }
+        const res = await fetch(`${API_BASE}/api/chat/sessions`, { headers });
         if (!res.ok) throw new Error("FETCH_FAILED");
 
         const sessions = await res.json();

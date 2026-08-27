@@ -355,12 +355,11 @@ async def send_message(
 
 @router.get("/sessions")
 async def get_sessions(current_user: UserInDB = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if not current_user:
-        return []
+    user_id = current_user.id if current_user else "guest-user"
         
     result = await db.execute(
         select(ChatSessionDB)
-        .where(ChatSessionDB.user_id == current_user.id)
+        .where(ChatSessionDB.user_id == user_id)
         .order_by(ChatSessionDB.updated_at.desc())
     )
     sessions = result.scalars().all()

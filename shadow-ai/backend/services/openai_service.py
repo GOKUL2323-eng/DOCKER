@@ -282,13 +282,27 @@ async def handle_simulation_mode(messages: List[dict]):
     query = extract_original_query(messages[-1]["content"])
     last_msg_lower = query.lower().strip()
     
+    # Identity & Founder/Creator responses
+    identity_keywords = [
+        "ur name", "your name", "what is your name", "what's your name", "whats your name",
+        "who are you", "who r u", "u yaaru", "ur name enna", "un name enna", "who created you",
+        "who made you", "who is gokul", "who is balaji", "who is shadow", "what is shadow",
+        "what can you do", "your capabilities", "who built you", "tell me about yourself",
+        "who are ur founders", "who are your founders", "creator", "founders"
+    ]
+    if any(k in last_msg_lower for k in identity_keywords):
+        if any(k in last_msg_lower for k in ["creator", "created", "made", "built", "gokul", "balaji", "founders"]):
+            return "I was created by Gokul P. (Founder/Visionary) and Balaji MJ (Co-founder/Designer), students at Takshashila University pursuing B.Sc in AI/ML."
+        elif any(k in last_msg_lower for k in ["capability", "capabilities", "can you do", "features"]):
+            return "I am SHADOW AI, a Tier-1 Neural Interface. I can execute real-time web matrix scans, synthesize multilingual text (including Tamil & Thanglish), materialize visual constructs, run Python/Java/C++ code, and orchestrate workflows."
+        else:
+            return "I am SHADOW AI, an advanced synthesized digital assistant designed and created by Gokul P. and Balaji MJ. Systems are nominal, boss. How can I assist you today?"
+
     # Thanglish specific greetings & quick responses
     if last_msg_lower in ["enna panra", "yennapannura", "enna panra bro"]:
         return "Summa dhan boss! (Just working!). Systems are nominal. Ungalukku enna venum?"
     elif last_msg_lower in ["summa", "summa iruken", "summa dhaan"]:
         return "Summa irukengala boss? Good to hear! How can I assist you today?"
-    elif last_msg_lower in ["ur name enna", "u yaaru", "un name enna", "who are u", "who r u"]:
-        return "Naan thaan SHADOW AI, unga intelligent digital assistant built by Gokul & Balaji. How can I assist you today?"
     elif last_msg_lower in ["epdi iruka", "epdi irukinga", "eppadi irukinga"]:
         return "Nalla iruken boss! (I'm doing great!). All protocols running smoothly. How are you?"
     elif last_msg_lower in ["vanakkam", "வணக்கம்"]:
@@ -470,14 +484,23 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
     ]
     is_simple_greeting = last_msg_lower.strip() in thanglish_greetings
     
+    identity_keywords = [
+        "ur name", "your name", "what is your name", "what's your name", "whats your name",
+        "who are you", "who r u", "u yaaru", "ur name enna", "un name enna", "who created you",
+        "who made you", "who is gokul", "who is balaji", "who is shadow", "what is shadow",
+        "what can you do", "your capabilities", "who built you", "tell me about yourself",
+        "who are ur founders", "who are your founders", "creator", "founders"
+    ]
+    is_identity_request = any(k in last_msg_lower for k in identity_keywords)
+
     # Extract clean search query and normalize Thanglish patterns
     search_query = clean_search_query(last_msg_content)
     normalized_search_query = normalize_thanglish_for_search(search_query)
     
-    # We only trigger search if it's not a simple greeting, and either:
+    # We only trigger search if it's not a simple greeting or identity question, and either:
     # 1. It is explicitly a search request (has search keywords)
     # 2. Or the user did NOT upload a file (if they uploaded a file, we only search if they explicitly asked for it)
-    should_search = not is_simple_greeting and (is_search_request or ("[ATTACHED_FILE:" not in last_msg_content))
+    should_search = not is_simple_greeting and not is_identity_request and (is_search_request or ("[ATTACHED_FILE:" not in last_msg_content))
     
     if (gemini_key or openai_key) and should_search and normalized_search_query.strip():
         search_results = await web_search(normalized_search_query)
