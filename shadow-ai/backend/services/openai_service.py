@@ -279,52 +279,54 @@ Do not mention "search results", "vectors", "uplink", "matrix", or internal code
 
 async def handle_simulation_mode(messages: List[dict]):
     """Provides direct, helpful fallback responses when LLM API keys are not configured."""
+    import re
     query = extract_original_query(messages[-1]["content"])
-    last_msg_lower = query.lower().strip()
+    clean_q = re.sub(r'[^\w\s]', '', query).lower().strip()
     
-    # Identity & Founder/Creator responses
-    identity_keywords = [
-        "ur name", "your name", "what is your name", "what's your name", "whats your name",
-        "who are you", "who r u", "u yaaru", "ur name enna", "un name enna", "who created you",
-        "who made you", "who is gokul", "who is balaji", "who is shadow", "what is shadow",
-        "what can you do", "your capabilities", "who built you", "tell me about yourself",
-        "who are ur founders", "who are your founders", "creator", "founders"
+    # 1. Identity & Creator/Founder Queries (ALWAYS Bypasses Search)
+    identity_terms = [
+        "name", "who are you", "who r u", "yaaru", "identity", "creator", 
+        "created", "built", "founders", "gokul", "balaji", "shadow"
     ]
-    if any(k in last_msg_lower for k in identity_keywords):
-        if any(k in last_msg_lower for k in ["creator", "created", "made", "built", "gokul", "balaji", "founders"]):
+    if any(term in clean_q for term in identity_terms):
+        if any(k in clean_q for k in ["creator", "created", "made", "built", "gokul", "balaji", "founders"]):
             return "I was created by Gokul P. (Founder/Visionary) and Balaji MJ (Co-founder/Designer), students at Takshashila University pursuing B.Sc in AI/ML."
-        elif any(k in last_msg_lower for k in ["capability", "capabilities", "can you do", "features"]):
+        elif any(k in clean_q for k in ["capability", "capabilities", "can you do", "features"]):
             return "I am SHADOW AI, a Tier-1 Neural Interface. I can execute real-time web matrix scans, synthesize multilingual text (including Tamil & Thanglish), materialize visual constructs, run Python/Java/C++ code, and orchestrate workflows."
         else:
             return "I am SHADOW AI, an advanced synthesized digital assistant designed and created by Gokul P. and Balaji MJ. Systems are nominal, boss. How can I assist you today?"
 
-    # Thanglish specific greetings & quick responses
-    if last_msg_lower in ["enna panra", "yennapannura", "enna panra bro"]:
-        return "Summa dhan boss! (Just working!). Systems are nominal. Ungalukku enna venum?"
-    elif last_msg_lower in ["summa", "summa iruken", "summa dhaan"]:
-        return "Summa irukengala boss? Good to hear! How can I assist you today?"
-    elif last_msg_lower in ["epdi iruka", "epdi irukinga", "eppadi irukinga"]:
-        return "Nalla iruken boss! (I'm doing great!). All protocols running smoothly. How are you?"
-    elif last_msg_lower in ["vanakkam", "வணக்கம்"]:
-        return "Vanakkam boss! How can I assist you today?"
-    
-    is_simple_greeting = last_msg_lower in ["hi", "hello", "hey", "hola", "こんにちは", "नमस्ते"] or len(last_msg_lower) < 3
-    if is_simple_greeting:
-        return f"Hello boss! How can I assist you today?"
-        
-    search_query = clean_search_query(query)
-    normalized_query = normalize_thanglish_for_search(search_query)
-    try:
-        search_results = await web_search(normalized_query)
-        if search_results and "unable to scan data points" not in search_results:
-            synthesized = await synthesize_search_results_free(query, search_results)
-            if synthesized and "402" not in synthesized and "Payment Required" not in synthesized:
-                return synthesized
-            return extract_fallback_summary(query, search_results)
-    except Exception as e:
-        safe_print(f"[ERROR]: Fallback simulation search failed: {e}")
-        
-    return f"I analyzed your request regarding '{query}'. To enable full conversational AI capabilities, please configure an OPENAI_API_KEY or GEMINI_API_KEY in your environment."
+    # 2. Greetings & Thanglish Casual Phrases (ALWAYS Bypasses Search)
+    greeting_terms = ["hi", "hello", "hey", "hola", "vanakkam", "enna panra", "summa", "epdi iruka"]
+    if any(g in clean_q for g in greeting_terms) or len(clean_q) < 3:
+        if "enna panra" in clean_q:
+            return "Summa dhan boss! (Just working!). Systems are nominal. Ungalukku enna venum?"
+        elif "summa" in clean_q:
+            return "Summa irukengala boss? Good to hear! How can I assist you today?"
+        elif "epdi" in clean_q:
+            return "Nalla iruken boss! (I'm doing great!). All protocols running smoothly. How are you?"
+        elif "vanakkam" in clean_q:
+            return "Vanakkam boss! How can I assist you today?"
+        else:
+            return "Hello boss! How can I assist you today?"
+
+    # 3. Web Search Fallback (ONLY for explicit search queries)
+    search_terms = ["search", "scan", "google", "latest", "news", "weather", "score", "match", "winner", "cm of"]
+    if any(s in clean_q for s in search_terms):
+        search_query = clean_search_query(query)
+        normalized_query = normalize_thanglish_for_search(search_query)
+        try:
+            search_results = await web_search(normalized_query)
+            if search_results and "unable to scan data points" not in search_results:
+                synthesized = await synthesize_search_results_free(query, search_results)
+                if synthesized and "402" not in synthesized and "Payment Required" not in synthesized:
+                    return synthesized
+                return extract_fallback_summary(query, search_results)
+        except Exception as e:
+            safe_print(f"[ERROR]: Fallback simulation search failed: {e}")
+
+    # 4. Standard Conversational Direct Response
+    return f"I am SHADOW AI. I have analyzed your request regarding '{query}'. Systems are nominal, boss. How can I assist you further?"
 
 async def materialize_visual_construct(prompt: str):
     """
@@ -453,8 +455,7 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
     is_image_request = any(word in last_msg_lower for word in ["image", "generate", "draw", "visualize", "create a picture", "materialize", "render", "show a picture", "paint"])
     is_search_request = any(word in last_msg_lower for word in [
         "search", "find", "scan", "web_scan", "web-scan", "google", 
-        "who won", "winner", "ipl", "score", "match", "result", "latest", 
-        "news", "current", "weather", "today", "who is", "what is the status of"
+        "who won", "winner", "ipl", "score", "match", "latest news", "weather today"
     ])
 
     # CHAT LOGIC - STEP 2: Use Context
@@ -475,7 +476,7 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
     gemini_key = getattr(settings, "GEMINI_API_KEY", None) and settings.GEMINI_API_KEY.strip() != ""
     openai_key = getattr(settings, "OPENAI_API_KEY", None) and settings.OPENAI_API_KEY.strip() != ""
     
-    # Always perform a web search scan for real-time access on every question, except for basic greetings
+    # Always perform a web search scan for real-time access on explicit search queries
     thanglish_greetings = [
         "hi", "hello", "hey", "hola", "வணக்கம்", "こんにちは", "नमस्ते", 
         "vanakkam", "enna panra", "summa", "epdi iruka", "epdi irukinga", 
@@ -497,10 +498,8 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
     search_query = clean_search_query(last_msg_content)
     normalized_search_query = normalize_thanglish_for_search(search_query)
     
-    # We only trigger search if it's not a simple greeting or identity question, and either:
-    # 1. It is explicitly a search request (has search keywords)
-    # 2. Or the user did NOT upload a file (if they uploaded a file, we only search if they explicitly asked for it)
-    should_search = not is_simple_greeting and not is_identity_request and (is_search_request or ("[ATTACHED_FILE:" not in last_msg_content))
+    # We only trigger web search if explicitly requested
+    should_search = is_search_request and not is_simple_greeting and not is_identity_request
     
     if (gemini_key or openai_key) and should_search and normalized_search_query.strip():
         search_results = await web_search(normalized_search_query)
