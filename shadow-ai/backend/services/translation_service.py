@@ -8,12 +8,28 @@ DetectorFactory.seed = 0
 logger = logging.getLogger(__name__)
 
 class TranslationService:
-    @staticmethod
-    def detect_language(text: str) -> str:
+    THANGLISH_KEYWORDS = {
+        'enna', 'summa', 'panra', 'panren', 'epdi', 'eppadi', 'irukinga', 'iruka', 
+        'saptingala', 'solla', 'sollunga', 'theriyum', 'puriyala', 'yaaru', 'enga', 
+        'enge', 'yen', 'nalla', 'aama', 'illa', 'vanakkam', 'machan', 'thala', 'bro'
+    }
+
+    @classmethod
+    def is_thanglish(cls, text: str) -> bool:
+        """Check if text contains common Thanglish keywords."""
+        if not text:
+            return False
+        words = set(text.lower().split())
+        return bool(words.intersection(cls.THANGLISH_KEYWORDS))
+
+    @classmethod
+    def detect_language(cls, text: str) -> str:
         """Detect the language of the input text."""
         try:
             if not text or len(text.strip()) < 2:
                 return 'en'
+            if cls.is_thanglish(text):
+                return 'ta-Latn'
             return detect(text)
         except Exception as e:
             logger.error(f"Language detection failed: {e}")

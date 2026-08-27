@@ -36,6 +36,33 @@ def clean_search_query(message_content: str) -> str:
     return cleaned if cleaned else message_content
 
 
+def normalize_thanglish_for_search(query: str) -> str:
+    """Normalizes Thanglish query patterns into clear search keywords for search engines."""
+    import re
+    q = query.strip()
+    replacements = [
+        (r'\byaaru\b', 'who is'),
+        (r'\byaru\b', 'who is'),
+        (r'\benga\b', 'where is'),
+        (r'\benge\b', 'where is'),
+        (r'\benna\b', 'what is'),
+        (r'\byen\b', 'why'),
+        (r'\beppo\b', 'when'),
+        (r'\bepdi\b', 'how is'),
+        (r'\beppadi\b', 'how is'),
+        (r'\bur\b', 'your'),
+        (r'\bu\b', 'you'),
+        (r'\bsumma\b', 'just'),
+        (r'\bpanra\b', 'doing'),
+        (r'\biruku\b', 'is'),
+        (r'\birukinga\b', 'are you'),
+    ]
+    normalized = q
+    for pattern, repl in replacements:
+        normalized = re.sub(pattern, repl, normalized, flags=re.IGNORECASE)
+    return normalized
+
+
 def get_openai_client() -> AsyncOpenAI:
     import os
     key = getattr(settings, "OPENAI_API_KEY", None) or os.getenv("OPENAI_API_KEY", "")
@@ -71,6 +98,19 @@ CORE OPERATIONAL PARAMETERS:
    Tamil Greeting Vector: "வணக்கம் பாஸ், இன்று நான் உங்களுக்கு எப்படி உதவ முடியும்?"
    Japanese Greeting Vector: "こんにちはボス、本日はどのようなお手伝いをいたしましょうか？"
    Hindi Greeting Vector: "नमस्ते बॉस, मैं आज आपकी कैसे सहायता कर सकता हूँ?"
+7.1. THANGLISH_AND_TANGLISH_PROTOCOL:
+   You have native-level comprehension of Thanglish / Tanglish (Tamil spoken or written using English/Roman script).
+   - Understand shorthand and common slang vocabulary:
+     * u = you, ur = your
+     * enna = what / what's up / what is
+     * summa = just / simply / casually / nothing special
+     * panra / panren / panreenga = doing / I am doing / you are doing
+     * epdi / eppadi = how, iruka / irukinga = are you / is it
+     * nalla = good / fine, aama = yes, illa = no / not
+     * yaaru = who, enga / enge = where, yen = why, eppo = when
+     * solla / sollunga = tell / say, theriyum = know, puriyala = don't understand
+     * saptingala = had food?, machan / thala / bro = buddy / friend
+   - When a user chats or asks questions in Thanglish (e.g. "ur name enna?", "enna panra?", "summa iruken u epdi iruka?", "Tamil Nadu CM yaaru?"), understand their intent perfectly and reply naturally in friendly, fluent Thanglish (or clear English mixed with Thanglish), giving an accurate, direct, and helpful answer.
 8. TEMPORAL_ALIGNMENT: The current year is **{current_year}**. Keep this absolute temporal reference mind for any calculations, calendar references, or current events. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
 
 {univ_context}
@@ -101,6 +141,9 @@ def get_direct_system_prompt() -> str:
     return f"""
 You are a helpful, highly capable, and direct professional AI assistant. Provide clear, concise, accurate, and professional answers. Do not use sci-fi, ninja, or tactical persona overlays (such as calling the user "boss" or referring to "protocols", "vectors", "matrix", etc.). Speak naturally, clearly, and directly.
 TEMPORAL_CONTEXT: The current year is **{current_year}**. Maintain this temporal reference context in all answers. (Note: As of 2026, the Chief Minister of Tamil Nadu is C. Joseph Vijay, who assumed office on May 10, 2026, succeeding M.K. Stalin. Ensure you state this accurately if asked).
+
+THANGLISH / TANGLISH SUPPORT:
+You understand Thanglish / Tanglish (Tamil written in English/Roman script, e.g., 'u' = you, 'ur' = your, 'enna' = what, 'summa' = just/simply, 'panra' = doing, 'yaaru' = who, 'enga' = where). Respond clearly and accurately to queries written in Thanglish, matching the user's intent naturally.
 
 {univ_context}
 
@@ -238,13 +281,27 @@ async def handle_simulation_mode(messages: List[dict]):
     """Provides direct, helpful fallback responses when LLM API keys are not configured."""
     query = extract_original_query(messages[-1]["content"])
     last_msg_lower = query.lower().strip()
-    is_simple_greeting = last_msg_lower in ["hi", "hello", "hey", "hola", "வணக்கம்", "こんにちは", "नमस्ते"] or len(last_msg_lower) < 3
     
+    # Thanglish specific greetings & quick responses
+    if last_msg_lower in ["enna panra", "yennapannura", "enna panra bro"]:
+        return "Summa dhan boss! (Just working!). Systems are nominal. Ungalukku enna venum?"
+    elif last_msg_lower in ["summa", "summa iruken", "summa dhaan"]:
+        return "Summa irukengala boss? Good to hear! How can I assist you today?"
+    elif last_msg_lower in ["ur name enna", "u yaaru", "un name enna", "who are u", "who r u"]:
+        return "Naan thaan SHADOW AI, unga intelligent digital assistant built by Gokul & Balaji. How can I assist you today?"
+    elif last_msg_lower in ["epdi iruka", "epdi irukinga", "eppadi irukinga"]:
+        return "Nalla iruken boss! (I'm doing great!). All protocols running smoothly. How are you?"
+    elif last_msg_lower in ["vanakkam", "வணக்கம்"]:
+        return "Vanakkam boss! How can I assist you today?"
+    
+    is_simple_greeting = last_msg_lower in ["hi", "hello", "hey", "hola", "こんにちは", "नमस्ते"] or len(last_msg_lower) < 3
     if is_simple_greeting:
-        return f"Hello! How can I assist you today?"
+        return f"Hello boss! How can I assist you today?"
         
+    search_query = clean_search_query(query)
+    normalized_query = normalize_thanglish_for_search(search_query)
     try:
-        search_results = await web_search(query)
+        search_results = await web_search(normalized_query)
         if search_results and "unable to scan data points" not in search_results:
             synthesized = await synthesize_search_results_free(query, search_results)
             if synthesized and "402" not in synthesized and "Payment Required" not in synthesized:
@@ -267,10 +324,6 @@ async def materialize_visual_construct(prompt: str):
             # Attempt to use Google Generative AI for image generation if supported
             import google.generativeai as genai
             genai.configure(api_key=settings.IMAGE_GEN_API_KEY)
-            # Note: This is an optimistic implementation assuming Imagen 3 access via the API key
-            # If not supported, it will fall through to other providers
-            # model = genai.GenerativeModel('imagen-3.0-generate-001') 
-            # In some cases, we might use it via a search or other specialized tool
             pass
         except Exception as e:
             safe_print(f"[RECOVERY]: Google Image synthesis initialization failed: {str(e)}")
@@ -409,18 +462,25 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
     openai_key = getattr(settings, "OPENAI_API_KEY", None) and settings.OPENAI_API_KEY.strip() != ""
     
     # Always perform a web search scan for real-time access on every question, except for basic greetings
-    is_simple_greeting = last_msg_lower.strip() in ["hi", "hello", "hey", "hola", "வணக்கம்", "こんにちは", "नमस्ते"]
+    thanglish_greetings = [
+        "hi", "hello", "hey", "hola", "வணக்கம்", "こんにちは", "नमस्ते", 
+        "vanakkam", "enna panra", "summa", "epdi iruka", "epdi irukinga", 
+        "saptingala", "hi bro", "hey bro", "enna vishayam", "yennapannura", 
+        "summa iruken", "ur name enna", "u yaaru", "who are u", "who r u"
+    ]
+    is_simple_greeting = last_msg_lower.strip() in thanglish_greetings
     
-    # Extract clean search query (remove attached file markup and code blocks)
+    # Extract clean search query and normalize Thanglish patterns
     search_query = clean_search_query(last_msg_content)
+    normalized_search_query = normalize_thanglish_for_search(search_query)
     
     # We only trigger search if it's not a simple greeting, and either:
     # 1. It is explicitly a search request (has search keywords)
     # 2. Or the user did NOT upload a file (if they uploaded a file, we only search if they explicitly asked for it)
     should_search = not is_simple_greeting and (is_search_request or ("[ATTACHED_FILE:" not in last_msg_content))
     
-    if (gemini_key or openai_key) and should_search and search_query.strip():
-        search_results = await web_search(search_query)
+    if (gemini_key or openai_key) and should_search and normalized_search_query.strip():
+        search_results = await web_search(normalized_search_query)
         messages[-1]["content"] = f"INTELLIGENCE_DATA:\n{search_results}\n\nOPERATIVE_QUERY: {last_msg_content}"
 
     # Visual Materialization (Non-streaming as it returns a URL/Image)
