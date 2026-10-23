@@ -127,6 +127,31 @@ async def db_check(db = Depends(get_db), current_user = Depends(get_current_user
             "message": str(e)
         }
 
+@app.get("/api/health")
+async def health_check(db = Depends(get_db)):
+    db_status = "connected"
+    try:
+        await db.execute(text("SELECT 1"))
+    except Exception as e:
+        db_status = f"unhealthy: {str(e)}"
+
+    providers = []
+    if getattr(settings, "OPENAI_API_KEY", "").strip():
+        providers.append("openai")
+    if getattr(settings, "GEMINI_API_KEY", "").strip():
+        providers.append("gemini")
+    if os.getenv("GROQ_API_KEY", "").strip():
+        providers.append("groq")
+
+    return {
+        "status": "online" if "unhealthy" not in db_status else "degraded",
+        "service": "Shadow AI Unified Backend",
+        "version": "1.0.0",
+        "database": db_status,
+        "ai_providers_configured": providers,
+        "google_oauth": bool((settings.GOOGLE_CLIENT_ID or "").strip() and (settings.GOOGLE_CLIENT_SECRET or "").strip())
+    }
+
 @app.get("/")
 async def root():
     return RedirectResponse(url="/ui")

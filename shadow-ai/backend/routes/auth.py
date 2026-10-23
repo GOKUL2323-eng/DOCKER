@@ -70,7 +70,7 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 async def login(response: Response, form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.username == form_data.username))
+    result = await db.execute(select(User).where(or_(User.username == form_data.username, User.email == form_data.username)))
     user = result.scalars().first()
     
     if not user or not user.hashed_password or not verify_password(form_data.password, user.hashed_password):
@@ -100,42 +100,9 @@ async def login(response: Response, form_data: OAuth2PasswordRequestForm = Depen
 @router.get("/login/google")
 async def google_login(request: Request, db: AsyncSession = Depends(get_db)):
     if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
-        # Seamless Fallback: Log in as verified Demo Google Operative when OAuth keys are unconfigured
-        demo_email = "gokul.google.operative@shadow.ai"
-        demo_sub = "demo-google-id-99999"
-        demo_picture = "https://lh3.googleusercontent.com/a/default-avatar"
-
-        result = await db.execute(select(User).where(or_(User.google_id == demo_sub, User.email == demo_email)))
-        user = result.scalars().first()
-
-        if not user:
-            user = User(
-                username="gokul_google_op",
-                email=demo_email,
-                hashed_password=get_password_hash(f"demo-google-oauth-{demo_sub}"),
-                auth_provider="google",
-                picture=demo_picture,
-                google_id=demo_sub
-            )
-            db.add(user)
-            await db.commit()
-            await db.refresh(user)
-
-        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": user.username}, expires_delta=access_token_expires
-        )
-
-        response = RedirectResponse(url=f"/ui?token={access_token}&user={user.username}")
-        response.set_cookie(
-            key="shadow_token",
-            value=access_token,
-            httponly=True,
-            max_age=int(access_token_expires.total_seconds()),
-            samesite="lax",
-            secure=False
-        )
-        return response
+        from urllib.parse import quote
+        error_msg = quote("Google OAuth credentials are not configured on this server. Please configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.")
+        return RedirectResponse(url=f"/ui?error={error_msg}")
     
     if settings.GOOGLE_REDIRECT_URI:
         redirect_uri = settings.GOOGLE_REDIRECT_URI.strip()

@@ -353,12 +353,23 @@ function scrollToBottom() {
 
 async function handleSendMessage(event) {
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (state.isGenerating) return; // Prevent duplicate concurrent submissions
+
     const input = document.getElementById('chatInput');
-    const message = input.value.trim();
+    const sendBtn = document.getElementById('sendBtn');
+    const message = input ? input.value.trim() : '';
     if (!message) return;
 
-    input.value = '';
-    input.style.height = 'auto';
+    state.isGenerating = true;
+    if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+
+    if (input) {
+        input.value = '';
+        input.style.height = 'auto';
+    }
 
     appendMessage('user', message);
     if (window.triggerGlitch) window.triggerGlitch();
@@ -371,6 +382,7 @@ async function handleSendMessage(event) {
 
     try {
         const payload = {
+            session_id: state.currentSessionId || null,
             message: message,
             image_data: state.selectedImageData ? state.selectedImageData.split(',')[1] : null,
             response_mode: state.responseMode || 'direct',
@@ -385,7 +397,8 @@ async function handleSendMessage(event) {
         state.selectedFileText = null;
         clearImage();
 
-        const responseFlow = await fetch(`${API_BASE}/api/chat/message?session_id=${state.currentSessionId || ''}`, {
+        const sessionQuery = state.currentSessionId ? `?session_id=${encodeURIComponent(state.currentSessionId)}` : '';
+        const responseFlow = await fetch(`${API_BASE}/api/chat/message${sessionQuery}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -394,8 +407,15 @@ async function handleSendMessage(event) {
             body: JSON.stringify(payload)
         });
 
-        if (responseFlow.status === 401) { logout(); return; }
-        if (!responseFlow.ok) throw new Error("UPLINK_FAILURE");
+        if (responseFlow.status === 401) { 
+            state.isGenerating = false;
+            logout(); 
+            return; 
+        }
+        if (!responseFlow.ok) {
+            const errJson = await responseFlow.json().catch(() => ({}));
+            throw new Error(errJson.detail || "UPLINK_FAILURE");
+        }
 
         // Process SSE Stream
         const reader = responseFlow.body.getReader();
@@ -413,16 +433,22 @@ async function handleSendMessage(event) {
                 if (line.startsWith('data: ')) {
                     try {
                         const data = JSON.parse(line.substring(6));
+                        if (data.session_id && !state.currentSessionId) {
+                            state.currentSessionId = data.session_id;
+                            fetchSessions(); // Refresh list to add newly created session log
+                        }
                         if (data.chunk) {
                             fullReply += data.chunk;
                             appendMessage('assistant', data.chunk, true);
                             scrollToBottom();
                         }
-                        if (data.session_id && !state.currentSessionId) {
-                            state.currentSessionId = data.session_id;
-                            fetchSessions(); // Refresh list to add newly created session log
+                        if (data.error) {
+                            throw new Error(data.error);
                         }
                     } catch (e) {
+                        if (e.message && e.message.includes("Error")) {
+                            throw e;
+                        }
                         console.warn("MALFORMED_STREAM_CHUNK", e);
                     }
                 }
@@ -437,8 +463,14 @@ async function handleSendMessage(event) {
         removeTypingIndicator();
         appendMessage('assistant', `[PROTOCOL_INTERRUPT]: Uplink failure. Diagnostic: ${err.message}`);
     } finally {
+        state.isGenerating = false;
+        if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
         if (avatar) avatar.classList.remove('speaking-glow');
         scrollToBottom();
+        if (input) input.focus();
     }
 }
 
@@ -791,6 +823,8 @@ function handleKeydown(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         handleSendMessage();
+    } else if (e.key === 'Enter' && e.shiftKey) {
+        setTimeout(() => autoScaleTextarea(e.target), 0);
     }
 }
 

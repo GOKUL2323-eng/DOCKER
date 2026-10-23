@@ -25,6 +25,9 @@ else:
             DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
         elif DATABASE_URL.startswith("postgresql://"):
             DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+        elif DATABASE_URL.startswith("sqlite") and "/data/" in DATABASE_URL and not os.path.exists("/data"):
+            local_db = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "shadow_ai.db")).replace("\\", "/")
+            DATABASE_URL = f"sqlite+aiosqlite:///{local_db}"
     else:
         DATABASE_URL = "sqlite+aiosqlite:///./shadow_ai.db"
 

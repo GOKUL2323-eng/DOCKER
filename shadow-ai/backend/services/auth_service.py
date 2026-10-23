@@ -22,15 +22,27 @@ async def get_current_user(request: Request, token: Optional[str] = Depends(oaut
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
-            return None
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: missing subject",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         token_data = TokenData(username=username)
     except JWTError:
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired or invalid credentials. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
         
     result = await db.execute(select(User).where(User.username == token_data.username))
     user = result.scalars().first()
     if user is None:
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User associated with token not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
         
     return UserInDB(
         id=user.id,

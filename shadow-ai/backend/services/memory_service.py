@@ -127,25 +127,35 @@ class MemoryService:
             if not client.collection_exists(collection_name):
                 return []
                 
-            search_result = client.search(
-                collection_name=collection_name,
-                query_vector=query_vector,
-                query_filter={
-                    "must": [
-                        {
-                            "key": "user_id",
-                            "match": {
-                                "value": user_id
+            if hasattr(client, "query_points"):
+                from qdrant_client.models import Filter, FieldCondition, MatchValue
+                search_res = client.query_points(
+                    collection_name=collection_name,
+                    query=query_vector,
+                    query_filter=Filter(must=[FieldCondition(key="user_id", match=MatchValue(value=user_id))]),
+                    limit=limit,
+                    score_threshold=0.35
+                )
+                return [p.payload["content"] for p in search_res.points if p.payload and "content" in p.payload]
+            elif hasattr(client, "search"):
+                search_result = client.search(
+                    collection_name=collection_name,
+                    query_vector=query_vector,
+                    query_filter={
+                        "must": [
+                            {
+                                "key": "user_id",
+                                "match": {
+                                    "value": user_id
+                                }
                             }
-                        }
-                    ]
-                },
-                limit=limit,
-                score_threshold=0.35
-            )
-            
-            matches = [hit.payload["content"] for hit in search_result]
-            return matches
+                        ]
+                    },
+                    limit=limit,
+                    score_threshold=0.35
+                )
+                return [hit.payload["content"] for hit in search_result if hit.payload and "content" in hit.payload]
+            return []
         except Exception as e:
             print(f"[MEMORY_SERVICE_ERROR]: Retrieval from Qdrant failed: {e}")
             return []

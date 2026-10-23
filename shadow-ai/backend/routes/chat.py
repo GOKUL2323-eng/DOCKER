@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
-from typing import List
+from typing import List, Optional
+import asyncio
 from models.user import UserInDB
 from models.chat import ChatMessageRequest
 from models.orm import ChatSessionDB, MessageDB
@@ -266,38 +268,49 @@ async def parse_file(
         print(f"[ROUTE_ERROR]: File Parsing Failure: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-from fastapi.responses import StreamingResponse
-import asyncio
-
 @router.post("/message")
 async def send_message(
     request: ChatMessageRequest, 
-    current_user: UserInDB = Depends(get_current_user),
+    session_id: Optional[str] = None,
+    current_user: Optional[UserInDB] = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
+    # Validate message content
+    if not request.message or not request.message.strip():
+        raise HTTPException(status_code=400, detail="Message content cannot be empty.")
+
     # Allow guests if current_user is None
     user_id = current_user.id if current_user else "guest-user"
 
+    effective_session_id = request.session_id or session_id
+
     # Check if session exists or create new
-    if request.session_id:
+    if effective_session_id:
         result = await db.execute(
             select(ChatSessionDB)
             .options(selectinload(ChatSessionDB.messages))
-            .where(ChatSessionDB.id == request.session_id, ChatSessionDB.user_id == user_id)
+            .where(ChatSessionDB.id == effective_session_id, ChatSessionDB.user_id == user_id)
         )
         chat_session = result.scalars().first()
         if not chat_session:
             raise HTTPException(status_code=404, detail="Chat session not found")
     else:
-        title = request.message[:30] + "..." if len(request.message) > 30 else request.message
+        clean_title = request.message.strip().split("\n")[0][:30]
+        title = clean_title + "..." if len(clean_title) >= 30 else clean_title
         chat_session = ChatSessionDB(
             user_id=user_id,
-            title=title
+            title=title or "New Chat"
         )
         db.add(chat_session)
         await db.flush()
         
-    # Add user message
+    # Context retrieval from prior messages
+    if effective_session_id and hasattr(chat_session, "messages") and chat_session.messages:
+        messages_context = [{"role": m.role, "content": m.content} for m in chat_session.messages][-10:]
+    else:
+        messages_context = []
+
+    # Add user message to DB
     user_msg = MessageDB(
         session_id=chat_session.id,
         role="user", 
@@ -306,15 +319,12 @@ async def send_message(
     db.add(user_msg)
     await db.commit() # Commit user message first
     
-    # Context retrieval
-    if request.session_id:
-        messages_context = [{"role": m.role, "content": m.content} for m in chat_session.messages[-9:]]
-    else:
-        messages_context = []
     messages_context.append({"role": "user", "content": request.message})
     
     # Generator for Streaming Response
     async def chat_generator():
+        # Emit session_id immediately so frontend associates stream with session ID
+        yield f"data: {json.dumps({'session_id': chat_session.id, 'started': True})}\n\n"
         full_reply = ""
         try:
             async for chunk in generate_chat_response(
@@ -329,22 +339,23 @@ async def send_message(
                     yield f"data: {json.dumps({'chunk': chunk})}\n\n"
             
             # Save AI response once complete
-            async with AsyncSessionLocal() as session:
-                ai_msg = MessageDB(
-                    session_id=chat_session.id,
-                    role="assistant", 
-                    content=full_reply
-                )
-                session.add(ai_msg)
-                
-                # Update session timestamp
-                stmt = select(ChatSessionDB).where(ChatSessionDB.id == chat_session.id)
-                res = await session.execute(stmt)
-                db_session = res.scalars().first()
-                if db_session:
-                    db_session.updated_at = datetime.utcnow()
-                
-                await session.commit()
+            if full_reply:
+                async with AsyncSessionLocal() as session:
+                    ai_msg = MessageDB(
+                        session_id=chat_session.id,
+                        role="assistant", 
+                        content=full_reply
+                    )
+                    session.add(ai_msg)
+                    
+                    # Update session timestamp
+                    stmt = select(ChatSessionDB).where(ChatSessionDB.id == chat_session.id)
+                    res = await session.execute(stmt)
+                    db_session = res.scalars().first()
+                    if db_session:
+                        db_session.updated_at = datetime.utcnow()
+                    
+                    await session.commit()
                 
             yield f"data: {json.dumps({'session_id': chat_session.id, 'done': True})}\n\n"
         except Exception as e:

@@ -1,8 +1,12 @@
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning, module="google.generativeai")
+
 from openai import AsyncOpenAI
 from core.config import settings
 from typing import List, Optional
 import json
 import base64
+import os
 import google.generativeai as genai
 import httpx
 from services.translation_service import TranslationService
@@ -72,6 +76,17 @@ def get_openai_client() -> AsyncOpenAI:
         base_url=base_url,
         timeout=60.0
     )
+
+def get_default_model() -> str:
+    if os.getenv("OPENAI_MODEL"):
+        return os.getenv("OPENAI_MODEL").strip()
+    base_url = (getattr(settings, "OPENAI_BASE_URL", "") or os.getenv("OPENAI_BASE_URL", "https://api.ai.cc/v1")).lower()
+    key = (getattr(settings, "OPENAI_API_KEY", "") or os.getenv("OPENAI_API_KEY", ""))
+    if key.startswith("gsk_") or "groq.com" in base_url:
+        return "llama-3.3-70b-versatile"
+    if "openai.com" in base_url or key.startswith("sk-proj-") or key.startswith("sk-"):
+        return "gpt-4o-mini"
+    return "deepseek-v4-flash"
 
 # Shadow AI Personality Prompt
 def get_shadow_system_prompt() -> str:
@@ -282,23 +297,24 @@ async def handle_simulation_mode(messages: List[dict]):
     import re
     query = extract_original_query(messages[-1]["content"])
     clean_q = re.sub(r'[^\w\s]', '', query).lower().strip()
+    words = clean_q.split()
     
     # 1. Identity & Creator/Founder Queries (ALWAYS Bypasses Search)
     identity_terms = [
         "name", "who are you", "who r u", "yaaru", "identity", "creator", 
         "created", "built", "founders", "gokul", "balaji", "shadow"
     ]
-    if any(term in clean_q for term in identity_terms):
-        if any(k in clean_q for k in ["creator", "created", "made", "built", "gokul", "balaji", "founders"]):
+    if any(re.search(r'\b' + re.escape(term) + r'\b', clean_q) for term in identity_terms):
+        if any(k in words for k in ["creator", "created", "made", "built", "gokul", "balaji", "founders"]):
             return "I was created by Gokul P. (Founder/Visionary) and Balaji MJ (Co-founder/Designer), students at Takshashila University pursuing B.Sc in AI/ML."
         elif any(k in clean_q for k in ["capability", "capabilities", "can you do", "features"]):
             return "I am SHADOW AI, a Tier-1 Neural Interface. I can execute real-time web matrix scans, synthesize multilingual text (including Tamil & Thanglish), materialize visual constructs, run Python/Java/C++ code, and orchestrate workflows."
-        else:
+        elif len(words) <= 6:
             return "I am SHADOW AI, an advanced synthesized digital assistant designed and created by Gokul P. and Balaji MJ. Systems are nominal, boss. How can I assist you today?"
 
-    # 2. Greetings & Thanglish Casual Phrases (ALWAYS Bypasses Search)
-    greeting_terms = ["hi", "hello", "hey", "hola", "vanakkam", "enna panra", "summa", "epdi iruka"]
-    if any(g in clean_q for g in greeting_terms) or len(clean_q) < 3:
+    # 2. Greetings & Thanglish Casual Phrases (Only when short message)
+    greeting_patterns = [r'\bhi\b', r'\bhello\b', r'\bhey\b', r'\bhola\b', r'\bvanakkam\b', r'\benna panra\b', r'\bsumma\b', r'\bepdi iruka\b']
+    if any(re.search(pat, clean_q) for pat in greeting_patterns) and len(words) <= 4:
         if "enna panra" in clean_q:
             return "Summa dhan boss! (Just working!). Systems are nominal. Ungalukku enna venum?"
         elif "summa" in clean_q:
@@ -312,7 +328,7 @@ async def handle_simulation_mode(messages: List[dict]):
 
     # 3. Web Search Fallback (ONLY for explicit search queries)
     search_terms = ["search", "scan", "google", "latest", "news", "weather", "score", "match", "winner", "cm of"]
-    if any(s in clean_q for s in search_terms):
+    if any(re.search(r'\b' + re.escape(s) + r'\b', clean_q) for s in search_terms):
         search_query = clean_search_query(query)
         normalized_query = normalize_thanglish_for_search(search_query)
         try:
@@ -325,8 +341,12 @@ async def handle_simulation_mode(messages: List[dict]):
         except Exception as e:
             safe_print(f"[ERROR]: Fallback simulation search failed: {e}")
 
-    # 4. Standard Conversational Direct Response
-    return f"I am SHADOW AI. I have analyzed your request regarding '{query}'. Systems are nominal, boss. How can I assist you further?"
+    # 4. Clear Diagnostic Status when no provider keys are configured
+    return (
+        f"[AI Provider Offline]: No active LLM provider API key is configured. "
+        f"To enable real-time intelligent AI responses for your query, please set "
+        f"OPENAI_API_KEY, GEMINI_API_KEY, or GROQ_API_KEY in the backend environment."
+    )
 
 async def materialize_visual_construct(prompt: str):
     """
@@ -374,7 +394,16 @@ async def handle_gemini_response(messages: List[dict], image_data: Optional[str]
     """Handles generating a streaming response using Gemini."""
     try:
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        model = genai.GenerativeModel('gemini-1.5-pro')
+        model = None
+        gemini_model_candidates = [os.getenv("GEMINI_MODEL", "gemini-1.5-flash"), "gemini-2.0-flash", "gemini-1.5-pro"]
+        for m_name in gemini_model_candidates:
+            try:
+                model = genai.GenerativeModel(m_name)
+                break
+            except Exception:
+                continue
+        if not model:
+            model = genai.GenerativeModel('gemini-1.5-flash')
         
         system_prompt = get_shadow_system_prompt() if response_mode == "shadow" else get_direct_system_prompt()
         contents = [{"role": "user", "parts": [{"text": system_prompt}]}]
@@ -400,10 +429,18 @@ async def handle_gemini_response(messages: List[dict], image_data: Optional[str]
             if chunk.text:
                 yield chunk.text
     except Exception as e:
-        yield f"RECOVERY_FAILURE: Gemini link severed: {str(e)}"
+        safe_print(f"[ERROR]: Gemini Link Failure: {str(e)}")
+        err_str = str(e)
+        if "API_KEY_INVALID" in err_str or "API key not valid" in err_str:
+            yield "[Gemini Provider Error]: The configured GEMINI_API_KEY is invalid or unauthorized."
+        elif "RESOURCE_EXHAUSTED" in err_str or "Quota exceeded" in err_str:
+            yield "[Gemini Provider Error]: Quota or rate limit exceeded on Google Gemini."
+        else:
+            yield f"[Gemini Provider Error]: {str(e)}"
 
 async def handle_openai_response(messages: List[dict], response_mode: str = "shadow"):
-    """Handles generating a streaming response using OpenAI."""
+    """Handles generating a streaming response using OpenAI or compatible API."""
+    model_name = get_default_model()
     try:
         system_prompt = get_shadow_system_prompt() if response_mode == "shadow" else get_direct_system_prompt()
         formatted_messages = [{"role": "system", "content": system_prompt}]
@@ -412,7 +449,7 @@ async def handle_openai_response(messages: List[dict], response_mode: str = "sha
 
         client = get_openai_client()
         stream = await client.chat.completions.create(
-            model="deepseek-v4-flash",
+            model=model_name,
             messages=formatted_messages,
             temperature=0.7,
             max_tokens=2048,
@@ -424,7 +461,47 @@ async def handle_openai_response(messages: List[dict], response_mode: str = "sha
                 yield content
     except Exception as e:
         safe_print(f"[ERROR]: OpenAI Link Failure: {str(e)}")
-        yield None
+        err_str = str(e)
+        if "401" in err_str or "Incorrect API key" in err_str or "invalid_api_key" in err_str:
+            yield "[AI Provider Error]: Authentication failed. The configured OPENAI_API_KEY is invalid or expired."
+        elif "429" in err_str or "insufficient_quota" in err_str:
+            yield "[AI Provider Error]: Rate limit or quota exceeded on the AI provider account."
+        elif "model_not_found" in err_str:
+            yield f"[AI Provider Error]: Model '{model_name}' was not found on the endpoint."
+        else:
+            yield f"[AI Provider Connection Error]: {str(e)}"
+
+async def handle_groq_response(messages: List[dict], response_mode: str = "shadow"):
+    """Handles generating a streaming response using Groq."""
+    model_name = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    try:
+        groq_key = os.getenv("GROQ_API_KEY", "").strip()
+        groq_client = AsyncOpenAI(api_key=groq_key, base_url="https://api.groq.com/openai/v1", timeout=60.0)
+        system_prompt = get_shadow_system_prompt() if response_mode == "shadow" else get_direct_system_prompt()
+        formatted_messages = [{"role": "system", "content": system_prompt}]
+        for msg in messages:
+            formatted_messages.append({"role": msg["role"], "content": msg["content"]})
+
+        stream = await groq_client.chat.completions.create(
+            model=model_name,
+            messages=formatted_messages,
+            temperature=0.7,
+            max_tokens=2048,
+            stream=True
+        )
+        async for chunk in stream:
+            content = chunk.choices[0].delta.content
+            if content:
+                yield content
+    except Exception as e:
+        safe_print(f"[ERROR]: Groq Link Failure: {str(e)}")
+        err_str = str(e)
+        if "401" in err_str or "Invalid API Key" in err_str:
+            yield "[Groq Provider Error]: The configured GROQ_API_KEY is invalid."
+        elif "429" in err_str:
+            yield "[Groq Provider Error]: Rate limit exceeded on Groq API."
+        else:
+            yield f"[Groq Provider Error]: {str(e)}"
 
 def extract_original_query(msg_content: str) -> str:
     if "OPERATIVE_QUERY:" in msg_content:
@@ -473,8 +550,9 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
         if univ_info:
             messages[-1]['content'] = f"[{univ_info}]\n\nOPERATIVE_QUERY: {messages[-1]['content']}"
 
-    gemini_key = getattr(settings, "GEMINI_API_KEY", None) and settings.GEMINI_API_KEY.strip() != ""
-    openai_key = getattr(settings, "OPENAI_API_KEY", None) and settings.OPENAI_API_KEY.strip() != ""
+    gemini_key = bool(getattr(settings, "GEMINI_API_KEY", None) and settings.GEMINI_API_KEY.strip())
+    openai_key = bool(getattr(settings, "OPENAI_API_KEY", None) and settings.OPENAI_API_KEY.strip())
+    groq_key = bool(os.getenv("GROQ_API_KEY", "").strip())
     
     # Always perform a web search scan for real-time access on explicit search queries
     thanglish_greetings = [
@@ -501,7 +579,7 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
     # We only trigger web search if explicitly requested
     should_search = is_search_request and not is_simple_greeting and not is_identity_request
     
-    if (gemini_key or openai_key) and should_search and normalized_search_query.strip():
+    if (gemini_key or openai_key or groq_key) and should_search and normalized_search_query.strip():
         search_results = await web_search(normalized_search_query)
         messages[-1]["content"] = f"INTELLIGENCE_DATA:\n{search_results}\n\nOPERATIVE_QUERY: {last_msg_content}"
 
@@ -516,6 +594,8 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
             async for chunk in handle_openai_response(messages, response_mode=response_mode): llm_response += chunk
         elif gemini_key:
             async for chunk in handle_gemini_response(messages, response_mode=response_mode): llm_response += chunk
+        elif groq_key:
+            async for chunk in handle_groq_response(messages, response_mode=response_mode): llm_response += chunk
         
         messages[-1]["content"] = prompt_backup
         if not llm_response: llm_response = "Visual construct materialized."
@@ -545,6 +625,16 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
         return
     elif model_override == "gemini" and gemini_key:
         async for chunk in handle_gemini_response(messages, image_data, response_mode=response_mode):
+            if chunk:
+                full_response += chunk
+                yield chunk
+        if user_id and full_response:
+            original_query = extract_original_query(last_msg_content)
+            asyncio.create_task(MemoryService.add_memory(user_id, original_query))
+            asyncio.create_task(MemoryService.add_memory(user_id, full_response))
+        return
+    elif model_override == "groq" and groq_key:
+        async for chunk in handle_groq_response(messages, response_mode=response_mode):
             if chunk:
                 full_response += chunk
                 yield chunk
@@ -585,7 +675,19 @@ async def generate_chat_response(messages: List[dict] | str, image_data: Optiona
                     asyncio.create_task(MemoryService.add_memory(user_id, full_response))
                 return
 
-        # Fallback to simulation
+        if groq_key:
+            async for chunk in handle_groq_response(messages, response_mode=response_mode):
+                if chunk:
+                    full_response += chunk
+                    yield chunk
+            if full_response:
+                if user_id:
+                    original_query = extract_original_query(last_msg_content)
+                    asyncio.create_task(MemoryService.add_memory(user_id, original_query))
+                    asyncio.create_task(MemoryService.add_memory(user_id, full_response))
+                return
+
+        # Fallback when no keys or providers configured
         sim_response = await handle_simulation_mode(messages)
         yield sim_response
         full_response = sim_response
