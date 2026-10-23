@@ -464,8 +464,8 @@ async def handle_openai_response(messages: List[dict], response_mode: str = "sha
         err_str = str(e)
         if "401" in err_str or "Incorrect API key" in err_str or "invalid_api_key" in err_str:
             yield "[AI Provider Error]: Authentication failed. The configured OPENAI_API_KEY is invalid or expired."
-        elif "429" in err_str or "insufficient_quota" in err_str:
-            yield "[AI Provider Error]: Rate limit or quota exceeded on the AI provider account."
+        elif "429" in err_str or "403" in err_str or "insufficient_quota" in err_str or "额度" in err_str or "quota" in err_str.lower():
+            yield "[AI Provider Error]: Insufficient balance or quota on the configured AI provider account. Please recharge or update your API key."
         elif "model_not_found" in err_str or "not found" in err_str.lower():
             # Automatically try fallback models if primary was not found on this endpoint
             fallback_candidates = ["deepseek-v4-flash", "deepseek-chat", "gpt-4o-mini", "gpt-3.5-turbo"]
