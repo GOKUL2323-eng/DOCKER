@@ -8,8 +8,8 @@ import asyncio
 from models.user import UserInDB
 from models.chat import ChatMessageRequest
 from models.orm import ChatSessionDB, MessageDB
-from services.auth_service import get_current_user
-from services.db import get_db, AsyncSessionLocal
+from services.db import get_db
+import services.db as db_service
 from services.openai_service import generate_chat_response, get_openai_client
 from services.google_tts_service import GoogleTTSService
 from datetime import datetime
@@ -340,7 +340,7 @@ async def send_message(
             
             # Save AI response once complete
             if full_reply:
-                async with AsyncSessionLocal() as session:
+                async with db_service.AsyncSessionLocal() as session:
                     ai_msg = MessageDB(
                         session_id=chat_session.id,
                         role="assistant", 
@@ -349,12 +349,12 @@ async def send_message(
                     session.add(ai_msg)
                     
                     # Update session timestamp
-                    stmt = select(ChatSessionDB).where(ChatSessionDB.id == chat_session.id)
-                    res = await session.execute(stmt)
-                    db_session = res.scalars().first()
-                    if db_session:
-                        db_session.updated_at = datetime.utcnow()
-                    
+                    from sqlalchemy import update
+                    await session.execute(
+                        update(ChatSessionDB)
+                        .where(ChatSessionDB.id == chat_session.id)
+                        .values(updated_at=datetime.utcnow())
+                    )
                     await session.commit()
                 
             yield f"data: {json.dumps({'session_id': chat_session.id, 'done': True})}\n\n"

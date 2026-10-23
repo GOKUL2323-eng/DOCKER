@@ -143,7 +143,7 @@ async def init_db():
             DATABASE_URL = f"sqlite+aiosqlite:///{fallback_path}"
             print(f"[DB_FALLBACK]: Automatically switched engine to resilient SQLite: {DATABASE_URL}")
             engine = create_async_engine(DATABASE_URL, echo=False)
-            AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+            AsyncSessionLocal.configure(bind=engine)
             await _setup_tables(engine, AsyncSessionLocal)
         else:
             raise primary_err

@@ -7,7 +7,6 @@ from typing import List, Optional
 import json
 import base64
 import os
-import google.generativeai as genai
 import httpx
 from services.translation_service import TranslationService
 from services.memory_service import MemoryService
@@ -84,7 +83,7 @@ def get_default_model() -> str:
     key = (getattr(settings, "OPENAI_API_KEY", "") or os.getenv("OPENAI_API_KEY", ""))
     if key.startswith("gsk_") or "groq.com" in base_url:
         return "llama-3.3-70b-versatile"
-    if "openai.com" in base_url or key.startswith("sk-proj-") or key.startswith("sk-"):
+    if "api.openai.com" in base_url or key.startswith("sk-proj-"):
         return "gpt-4o-mini"
     return "deepseek-v4-flash"
 
@@ -393,6 +392,7 @@ async def materialize_visual_construct(prompt: str):
 async def handle_gemini_response(messages: List[dict], image_data: Optional[str] = None, response_mode: str = "shadow"):
     """Handles generating a streaming response using Gemini."""
     try:
+        import google.generativeai as genai
         genai.configure(api_key=settings.GEMINI_API_KEY)
         model = None
         gemini_model_candidates = [os.getenv("GEMINI_MODEL", "gemini-1.5-flash"), "gemini-2.0-flash", "gemini-1.5-pro"]
@@ -466,8 +466,31 @@ async def handle_openai_response(messages: List[dict], response_mode: str = "sha
             yield "[AI Provider Error]: Authentication failed. The configured OPENAI_API_KEY is invalid or expired."
         elif "429" in err_str or "insufficient_quota" in err_str:
             yield "[AI Provider Error]: Rate limit or quota exceeded on the AI provider account."
-        elif "model_not_found" in err_str:
-            yield f"[AI Provider Error]: Model '{model_name}' was not found on the endpoint."
+        elif "model_not_found" in err_str or "not found" in err_str.lower():
+            # Automatically try fallback models if primary was not found on this endpoint
+            fallback_candidates = ["deepseek-v4-flash", "deepseek-chat", "gpt-4o-mini", "gpt-3.5-turbo"]
+            recovered = False
+            for fb_model in fallback_candidates:
+                if fb_model == model_name:
+                    continue
+                try:
+                    stream = await client.chat.completions.create(
+                        model=fb_model,
+                        messages=formatted_messages,
+                        temperature=0.7,
+                        max_tokens=2048,
+                        stream=True
+                    )
+                    async for chunk in stream:
+                        content = chunk.choices[0].delta.content
+                        if content:
+                            yield content
+                    recovered = True
+                    break
+                except Exception:
+                    continue
+            if not recovered:
+                yield f"[AI Provider Error]: Model '{model_name}' was not found on the endpoint."
         else:
             yield f"[AI Provider Connection Error]: {str(e)}"
 
