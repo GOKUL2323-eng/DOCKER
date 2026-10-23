@@ -14,7 +14,10 @@ from routes import auth, chat
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
+    try:
+        await init_db()
+    except Exception as db_err:
+        print(f"[STARTUP WARNING]: Database init error: {db_err}")
     
     # Retrieve local network IP
     import socket
