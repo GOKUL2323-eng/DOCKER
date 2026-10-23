@@ -8,6 +8,7 @@ import asyncio
 from models.user import UserInDB
 from models.chat import ChatMessageRequest
 from models.orm import ChatSessionDB, MessageDB
+from services.auth_service import get_current_user
 from services.db import get_db
 import services.db as db_service
 from services.openai_service import generate_chat_response, get_openai_client
