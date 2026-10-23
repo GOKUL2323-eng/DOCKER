@@ -82,49 +82,68 @@ async def get_db():
             _db_initialized = True
         except Exception as e:
             print(f"[DB_INIT_ERROR]: {e}")
+            _db_initialized = True
     async with AsyncSessionLocal() as session:
         yield session
 
 async def init_db():
+    global engine, AsyncSessionLocal, DATABASE_URL
     import models.orm
     from models.orm import User
-    from sqlalchemy import select
-    async with engine.begin() as conn:
-        # Create all tables
-        await conn.run_sync(Base.metadata.create_all)
-        
-        # Safely migrate existing users table if missing new columns
-        def run_migrations(connection):
-            from sqlalchemy import inspect, text
-            try:
-                inspector = inspect(connection)
-                if 'users' in inspector.get_table_names():
-                    columns = [c['name'] for c in inspector.get_columns('users')]
-                    if 'auth_provider' not in columns:
-                        connection.execute(text("ALTER TABLE users ADD COLUMN auth_provider VARCHAR DEFAULT 'local'"))
-                    if 'picture' not in columns:
-                        connection.execute(text("ALTER TABLE users ADD COLUMN picture VARCHAR"))
-                    if 'google_id' not in columns:
-                        connection.execute(text("ALTER TABLE users ADD COLUMN google_id VARCHAR"))
-            except Exception as migrate_err:
-                print(f"[DB MIGRATION WARNING]: {migrate_err}")
+    from sqlalchemy import select, text
+    
+    async def _setup_tables(active_engine, active_sessionmaker):
+        async with active_engine.begin() as conn:
+            # Create all tables
+            await conn.run_sync(Base.metadata.create_all)
+            
+            # Safely migrate existing users table if missing new columns
+            def run_migrations(connection):
+                from sqlalchemy import inspect
+                try:
+                    inspector = inspect(connection)
+                    if 'users' in inspector.get_table_names():
+                        columns = [c['name'] for c in inspector.get_columns('users')]
+                        if 'auth_provider' not in columns:
+                            connection.execute(text("ALTER TABLE users ADD COLUMN auth_provider VARCHAR DEFAULT 'local'"))
+                        if 'picture' not in columns:
+                            connection.execute(text("ALTER TABLE users ADD COLUMN picture VARCHAR"))
+                        if 'google_id' not in columns:
+                            connection.execute(text("ALTER TABLE users ADD COLUMN google_id VARCHAR"))
+                except Exception as migrate_err:
+                    print(f"[DB MIGRATION WARNING]: {migrate_err}")
 
-        await conn.run_sync(run_migrations)
-        
-    # Seed default guest user if not present to satisfy FK constraints
-    async with AsyncSessionLocal() as session:
-        try:
-            res = await session.execute(select(User).where(User.id == "guest-user"))
-            guest = res.scalars().first()
-            if not guest:
-                guest = User(
-                    id="guest-user",
-                    username="guest_operative",
-                    email="guest@shadow.ai",
-                    hashed_password="guest-no-password"
-                )
-                session.add(guest)
-                await session.commit()
-                print("Default guest operative seeded successfully.")
-        except Exception as e:
-            print(f"Warning: Could not seed guest user: {e}")
+            await conn.run_sync(run_migrations)
+            
+        # Seed default guest user if not present to satisfy FK constraints
+        async with active_sessionmaker() as session:
+            try:
+                res = await session.execute(select(User).where(User.id == "guest-user"))
+                guest = res.scalars().first()
+                if not guest:
+                    guest = User(
+                        id="guest-user",
+                        username="guest_operative",
+                        email="guest@shadow.ai",
+                        hashed_password="guest-no-password"
+                    )
+                    session.add(guest)
+                    await session.commit()
+                    print("Default guest operative seeded successfully.")
+            except Exception as e:
+                print(f"Warning: Could not seed guest user: {e}")
+
+    try:
+        await _setup_tables(engine, AsyncSessionLocal)
+    except Exception as primary_err:
+        print(f"[DB_ERROR]: Primary database connection error: {primary_err}")
+        if not DATABASE_URL.startswith("sqlite"):
+            is_vercel = bool(os.getenv("VERCEL") or os.getenv("VERCEL_ENV"))
+            fallback_path = "/tmp/shadow_ai.db" if is_vercel else os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "shadow_ai.db")).replace("\\", "/")
+            DATABASE_URL = f"sqlite+aiosqlite:///{fallback_path}"
+            print(f"[DB_FALLBACK]: Automatically switched engine to resilient SQLite: {DATABASE_URL}")
+            engine = create_async_engine(DATABASE_URL, echo=False)
+            AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+            await _setup_tables(engine, AsyncSessionLocal)
+        else:
+            raise primary_err
